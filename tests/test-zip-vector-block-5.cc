@@ -23,9 +23,7 @@ void t1()
 
     assert(sum1 == sum2);
 
-    dump_bins(vec);
     dump_index(vec);
-    verify_bins(vec);
 }
 
 int main(int argc, char **argv)

@@ -20,7 +20,9 @@
 #include <cstdint>
 
 #include <tuple>
+#include <utility>
 #include <algorithm>
+#include <functional>
 #include <type_traits>
 #include <limits>
 

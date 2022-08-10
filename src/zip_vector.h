@@ -85,25 +85,19 @@ struct zip_vector
         bool operator!=(const iterator &o) const;
     };
 
-    struct slab_bin { size_t _offset; size_t _next; };
     struct page_idx { zvec_meta<V> meta; size_t offset; zvec_format format; };
 
     page_idx       *_page_idx;     /* compressed page IV, delta, offset, fmt */
     size_t          _page_count;   /* number of metadata pages allocated */
     char           *_slab_ptr;     /* slab of compressed data (base) */
     char           *_slab_data;    /* slab of compressed data (aligned) */
-    size_t          _slab_free;    /* slab offset to unallocated space */
     size_t          _slab_limit;   /* size of slab array */
-    slab_bin       *_bin_data;     /* bins of freed blocks */
-    size_t          _bin_free;     /* bins offset to unallocated space */
-    size_t          _bin_limit;    /* size of bins array */
+    u64            *_bmap_data;    /* bitmap of allocated space */
+    size_t          _bmap_last;    /* last bitmap allocation offset */
     size_t          _active_page;  /* page number of active area */
     size_t          _active_area;  /* offset to active area within slab */
     I               _count;        /* number of elements in the vector */
     bool            _dirty;        /* active area is dirty */
-
-    static constexpr size_t _slab_align = 64; /* slab alignment for AVX-512 */
-    static constexpr size_t _bin_roots = 12;  /* number of roots in bins array */
 
     constexpr I f_page_round(I count) { return (count + Q - 1) & ~(Q - 1); }
     constexpr size_t f_page_num(I count) { return (size_t)(count >> page_shift); }
@@ -121,15 +115,15 @@ struct zip_vector
     void sync();
 
     void resize_slab(size_t next_limit);
-    size_t alloc_slab(zvec_size size, size_t align = _slab_align);
+    size_t alloc_slab(zvec_size size);
     void dealloc_slab(zvec_size size, size_t offset);
 
-    void resize_bins(size_t next_limit);
-    size_t scan_bins();
-    size_t alloc_bin();
-    void dealloc_bin(size_t bin);
-    void push_bin(zvec_size size, size_t offset);
-    size_t pop_bin(zvec_size size);
+    static std::pair<size_t,size_t> scan_bitmap(u64 *x, size_t offset,
+        size_t limit, std::function<bool(size_t,size_t)> f);
+    static void set_bitmap(u64 *x, size_t o, size_t l, bool v);
+
+    size_t alloc_bitmap(zvec_size size);
+    void dealloc_bitmap(zvec_size size, size_t offset);
 
     void switch_page(size_t y);
     void write_element(size_t y, size_t x, V val);
@@ -145,19 +139,15 @@ inline zip_vector<V,I,Q>::zip_vector()
       _page_count(0),
       _slab_ptr(nullptr),
       _slab_data(nullptr),
-      _slab_free(0),
       _slab_limit(0),
-      _bin_data(nullptr),
-      _bin_free(0),
-      _bin_limit(0),
+      _bmap_data(nullptr),
+      _bmap_last(0),
       _active_page((size_t)-1ll),
       _active_area((size_t)-1ll),
       _count(0),
       _dirty(false)
 {
     resize_slab(page_size * 2);
-    resize_bins(_bin_roots * 2);
-    _bin_free = _bin_roots;
  }
 
 template <typename V, typename I, size_t Q>
@@ -171,7 +161,7 @@ inline zip_vector<V,I,Q>::~zip_vector()
 {
     free(_page_idx);
     free(_slab_ptr);
-    free(_bin_data);
+    free(_bmap_data);
 }
 
 template <typename V, typename I, size_t Q>
@@ -208,38 +198,40 @@ inline void zip_vector<V,I,Q>::sync()
 template <typename V, typename I, size_t Q>
 inline void zip_vector<V,I,Q>::resize_slab(size_t next_limit)
 {
-    if (next_limit > _slab_limit) {
-        /* we use malloc/memcpy/free because we need realloc_aligned
+    if (next_limit > _slab_limit)
+    {
+        /* bitmap is 512:1, 1-bit = 64-bytes, 1-byte = 512-bytes */
+        size_t old_bmap_size = _slab_limit >> 9;
+        size_t new_bmap_size = next_limit >> 9;
+        _bmap_data = (u64*)realloc(_bmap_data, new_bmap_size);
+        memset((char*)_bmap_data + old_bmap_size, 0, new_bmap_size - old_bmap_size);
+
+        /* use malloc/memcpy/free for the slab. we need realloc_aligned
          * which can't be emulated with realloc because the alignment
          * adjustment can change messing up the alignment of objects */
         char* prev_slab_data = _slab_data;
-        char* next_slab_ptr = (char*)malloc(next_limit + _slab_align);
-        char* next_slab_data = _align_ptr<char>(next_slab_ptr, _slab_align);
-        memcpy(next_slab_data, prev_slab_data, _slab_free);
+        char* next_slab_ptr = (char*)malloc(next_limit + 64);
+        char* next_slab_data = _align_ptr<char>(next_slab_ptr, 64);
+        memcpy(next_slab_data, prev_slab_data, _slab_limit);
         free(_slab_ptr);
         _slab_ptr = next_slab_ptr;
         _slab_data = next_slab_data;
         _slab_limit = next_limit;
+        Trace("resize_slab %zu\n", next_limit);
     }
 }
 
 template <typename V, typename I, size_t Q>
-inline size_t zip_vector<V,I,Q>::alloc_slab(zvec_size size, size_t align)
+inline size_t zip_vector<V,I,Q>::alloc_slab(zvec_size size)
 {
-    size_t offset = pop_bin(size);
+    size_t offset = alloc_bitmap(size);
     size_t nbytes = (zvec_size_bits(size) * Q) >> 3;
-    if (offset != invalid_offset) {
-        Trace("alloc_slab: reusing %zd bytes at offset %zd", nbytes, offset);
-        return offset;
-    } else {
-        size_t req_base = _align_offset(_slab_free, align);
-        size_t req_limit = _pow2_ge(req_base + nbytes);
-        offset = req_base;
-        resize_slab(req_limit);
-        _slab_free += nbytes;
-        Trace("alloc_slab: allocated %zd bytes at offset %zd", nbytes, offset);
-        return offset;
+    if (offset == invalid_offset) {
+        resize_slab(_slab_limit << 1);
+        offset =  alloc_bitmap(size);
     }
+    Trace("alloc_slab: allocated %zd bytes at offset %zd", nbytes, offset);
+    return offset;
 }
 
 template <typename V, typename I, size_t Q>
@@ -247,85 +239,111 @@ inline void zip_vector<V,I,Q>::dealloc_slab(zvec_size size, size_t offset)
 {
     size_t nbytes = (zvec_size_bits(size) * Q) >> 3;
     Trace("dealloc_slab: freeing %zd bytes at offset %zd", nbytes, offset);
-    push_bin(size, offset);
+    dealloc_bitmap(size, offset);
 }
 
 template <typename V, typename I, size_t Q>
-inline void zip_vector<V,I,Q>::resize_bins(size_t next_limit)
+inline std::pair<size_t,size_t> zip_vector<V,I,Q>::scan_bitmap(u64 *x,
+    size_t offset, size_t limit, std::function<bool(size_t,size_t)> f)
 {
-    if (next_limit > _bin_limit) {
-        size_t prev_size = sizeof(slab_bin) * _bin_limit;
-        size_t next_size = sizeof(slab_bin) * next_limit;
-        _bin_limit = next_limit;
-        _bin_data = (slab_bin*)realloc(_bin_data, next_size);
-        memset((char*)_bin_data + prev_size, -1, next_size - prev_size);
+    u64 v = 0;
+    size_t i = 0, c = 0, lo, ll = 0, no, nl, ni, b0, b1;
+
+    auto next = [&] () -> u64 { ni = (offset + i++) % limit; return x[ni]; };
+
+    do {
+        /* fetch next word if there are no bits */
+        if (c == 0 && i < limit) {
+            v = next();
+            c = 64;
+        }
+
+        /* find range of used bits */
+        b1 = std::min((size_t)ctz(~v), c);
+        v >>= b1;
+        c -= b1;
+
+        /* fetch next word if there are no bits */
+        if (c == 0 && i < limit) {
+            v = next();
+            c = 64;
+        }
+
+        /* find range of free bits */
+        b0 = std::min((size_t)ctz(v), c);
+        v >>= b0;
+        c -= b0;
+
+        /* create bit address */
+        no = (ni << 6) + 64 - c - b0;
+        nl = b0;
+
+        /* merge with range in last round or emit */
+        if (lo + ll == no) {
+            no = lo;
+            nl += ll;
+        } else if (ll != 0 && f(lo, ll)) {
+            return { lo, ll };
+        }
+
+        /* save next range */
+        lo = no;
+        ll = nl;
+    }
+    while (i < limit || c > 0);
+
+    if (ll != 0 && f(lo, ll)) {
+        return { lo, ll };
+    } else {
+        return { invalid_offset, invalid_offset };
     }
 }
 
 template <typename V, typename I, size_t Q>
-inline size_t zip_vector<V,I,Q>::scan_bins()
+inline void zip_vector<V,I,Q>::set_bitmap(u64 *x, size_t o, size_t l, bool v)
 {
-    /* circular scan for free bins but skips bin_roots */
-    for (size_t i = 0; i < (_bin_limit - _bin_roots); i++) {
-        size_t o = _bin_free + i < _bin_limit ? _bin_free + i
-                 : _bin_free + i - _bin_limit + _bin_roots;
-        if (_bin_data[o]._offset == invalid_offset) {
-            return o;
+    size_t w = o >> 6, b = o & 63;
+    if (v) {
+        x[w] |= (((u64)(-1ll)) >> (64-l)) << b;
+        if (b + l > 64) {
+            x[w+1] |= (((u64)(-1ll)) >> (128-b-l));
+        }
+    } else {
+        x[w] &= ~((((u64)(-1ll)) >> (64-l)) << b);
+        if (b + l > 64) {
+            x[w+1] &= ~((((u64)(-1ll)) >> (128-b-l)));
         }
     }
-    return invalid_offset;
 }
 
 template <typename V, typename I, size_t Q>
-inline size_t zip_vector<V,I,Q>::alloc_bin()
+inline size_t zip_vector<V,I,Q>::alloc_bitmap(zvec_size size)
 {
-    size_t bin = scan_bins();
-    if (bin == invalid_offset) {
-        resize_bins(_bin_limit * 2);
-        bin = scan_bins();
-        assert(bin != invalid_offset);
-    }
-    _bin_free = bin + 1;
-    return bin;
-}
+    /*
+     * find block matching our size request.
+     *
+     * currently finds the first block. there is potential to scan several
+     * blocks and find a block that when split creates a popular size.
+     * requires global block size statistics and scanned size statistics.
+     */
 
-template <typename V, typename I, size_t Q>
-inline void zip_vector<V,I,Q>::dealloc_bin(size_t bin)
-{
-    _bin_data[bin]._offset = invalid_offset;
-    _bin_data[bin]._next = invalid_offset;
-    if (_bin_free == bin + 1) _bin_free = bin;
-}
+    size_t lines = (zvec_size_bits(size) * Q) >> 9;
+    auto scan = [=] (size_t o, size_t l) -> bool { return (l >= lines); };
+    auto r = scan_bitmap(_bmap_data, _bmap_last, _slab_limit >> 12, scan);
 
-template <typename V, typename I, size_t Q>
-inline void zip_vector<V,I,Q>::push_bin(zvec_size size, size_t offset)
-{
-    size_t _next = _bin_data[size-1]._next;
-    size_t _offset = _bin_data[size-1]._offset;
-    if (_offset == invalid_offset) {
-        _bin_data[size-1]._offset = offset;
+    if (r.first == invalid_offset) {
+        return invalid_offset;
     } else {
-        size_t bin = alloc_bin();
-        _bin_data[bin]._next = _next;
-        _bin_data[bin]._offset = _offset;
-        _bin_data[size-1]._next = bin;
-        _bin_data[size-1]._offset = offset;
+        _bmap_last = r.first >> 6;
+        set_bitmap(_bmap_data, r.first, lines, true);
+        return r.first << 6;
     }
 }
 
 template <typename V, typename I, size_t Q>
-inline size_t zip_vector<V,I,Q>::pop_bin(zvec_size size)
+inline void zip_vector<V,I,Q>::dealloc_bitmap(zvec_size size, size_t offset)
 {
-    size_t _next = _bin_data[size-1]._next;
-    size_t _offset = _bin_data[size-1]._offset;
-    if (_next == invalid_offset) {
-        _bin_data[size-1]._offset = invalid_offset;
-    } else {
-        _bin_data[size-1]._next = _bin_data[_next]._next;
-        _bin_data[size-1]._offset = _bin_data[_next]._offset;
-        dealloc_bin(_next);
-    }
-    return _offset;
+    set_bitmap(_bmap_data, offset >> 6, (zvec_size_bits(size) * Q) >> 9, false);
 }
 
 template <typename V, typename I, size_t Q>

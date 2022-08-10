@@ -29,9 +29,7 @@ void t1()
 
     zvec.sync();
 
-    dump_bins(zvec);
     dump_index(zvec);
-    verify_bins(zvec);
 }
 
 int main(int argc, char **argv)

@@ -86,69 +86,12 @@ struct block_random
 };
 
 template <typename ZV>
-void verify_bins(ZV& vec)
-{
-    size_t page_size = sizeof(typename ZV::value_type) * ZV::page_interval;
-
-    size_t bins_free_total = 0;
-    for (size_t i = 0; i < ZV::_bin_roots; i++) {
-        size_t size = zvec_size_bits((zvec_size)(i + 1));
-        size_t offset = vec._bin_data[i]._offset;
-        size_t next = vec._bin_data[i]._next;
-        size_t bins_count = 0;
-        size_t block_size = ((size_t)size * ZV::page_interval) >> 3;
-        bins_count += (offset != ZV::invalid_offset);
-        while (next != (size_t)(-1ll)) {
-            size_t bin = next;
-            offset = vec._bin_data[bin]._offset;
-            next = vec._bin_data[bin]._next;
-            bins_count += (offset != ZV::invalid_offset);
-        }
-        size_t bins_total = bins_count * block_size;
-        bins_free_total += bins_total;
-    }
-    size_t index_alloc_total = 0;
-    for (size_t i = 0; i < vec.f_page_num(vec._count); i++) {
-        zvec_format format = vec._page_idx[i].format;
-        size_t size = zvec_size_bits((zvec_size)format.size);
-        size_t block_size = ((size_t)size * ZV::page_interval) >> 3;
-        index_alloc_total += block_size;
-    }
-    size_t slab_inuse_total = bins_free_total + index_alloc_total + ((vec._active_area != (size_t)-1ll) ? page_size : 0);
-    printf("--- verify slab ---\n");
-    printf("bins_free_total   : %zu\n", bins_free_total);
-    printf("index_alloc_total : %zu\n", index_alloc_total);
-    printf("slab_inuse_total  : %zu\n", slab_inuse_total);
-    printf("slab_free_marker  : %zu\n", vec._slab_free);
-    assert(slab_inuse_total == vec._slab_free);
-}
-
-template <typename ZV>
-void dump_bins(ZV& vec)
-{
-    printf("--- dump bins ---\n");
-    for (size_t i = 0; i < ZV::_bin_roots; i++) {
-        size_t size = zvec_size_bits((zvec_size)(i + 1));
-        size_t offset = vec._bin_data[i]._offset;
-        size_t next = vec._bin_data[i]._next;
-        printf("bin[%-5zu] size:%-5zd offset:%-5zd next:%-5zd\n", i, size, offset, next);
-        while (next != (size_t)(-1ll)) {
-            size_t bin = next;
-            offset = vec._bin_data[bin]._offset;
-            next = vec._bin_data[bin]._next;
-            printf("\t   bin[%-5zd] offset:%-5zd next:%-5zd\n", bin, offset, next);
-        }
-    }
-}
-
-template <typename ZV>
 void dump_index(ZV& vec)
 {
     printf("--- dump index ---\n");
     size_t page_size = sizeof(typename ZV::value_type) * ZV::page_interval;
     size_t page_count = vec._page_count;
-    size_t meta_total = sizeof(typename ZV::page_idx) * vec._page_count +  sizeof(typename ZV::slab_bin) * vec._bin_limit;
-    size_t slab_used = vec._slab_free;
+    size_t meta_total = sizeof(typename ZV::page_idx) * vec._page_count + vec._slab_limit >> 9;
     size_t slab_total = vec._slab_limit;
     size_t vec_total = meta_total + slab_total;
     size_t vec_pages = page_size * page_count;
@@ -174,7 +117,6 @@ void dump_index(ZV& vec)
     printf("page_count  : %-9zu\n", page_count);
     printf("vec_used    : %-9zu\n", vec_used);
     printf("vec_pages   : %-9zu\n", vec_pages);
-    printf("slab_used   : %-9zu\n", slab_used);
     printf("slab_total  : %-9zu\n", slab_total);
     printf("meta_total  : %-9zu\n", meta_total);
     printf("vec_total   : %-9zu\n", vec_total);
