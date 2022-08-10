@@ -7,7 +7,7 @@ using Google's Highway C++ library for portable SIMD/vector intrinsics.
 
 > _zip_vector_ reduces memory footprint and can speed up in-order
 > traversal of arrays by lowering global memory bandwidth using
-> its lightening fast vector compression codecs.
+> lightening fast vector compression.
 
 ![zip-vector-delta-diagram](/images/zip-vector-delta.png)
 
@@ -22,11 +22,11 @@ on the sum of compression latency plus the latency of transferring
 compressed blocks to and from global memory being less than the cost
 of transferring uncompressed blocks to and from global memory.
 
-The order of compression and decompression of appropriately sized
-blocks ensures that accesses to uncompressed data happen in the L1
-and L2 caches whereas global memory accesses will read and write
-compressed data thus effectively increasing global memory bandwidth.
-Nevertheless, the primary goal is to reduce the in-memory footprint.
+The order of compression and decompression of minimally sized blocks
+ensures that accesses to uncompressed data happen in L1 and L2 caches
+whereas global memory accesses read and write compressed data thus
+effectively increasing global memory bandwidth. Nevertheless, the
+primary goal is to reduce in-memory footprint.
 
 The _zip_vector_ template is intended to be similar to _std::vector_
 although the current prototype implementation does not yet implement
@@ -63,8 +63,8 @@ offsets array which is indexed by right shifting array indices.
 
 Pages are scanned and compressed using fast but simple block compression
 codecs that perform width reduction for small absolute values or encode
-values using signed deltas and initial value, or special blocks for
-constant values and sequences with constant deltas.
+values using signed deltas, and special blocks for constant values and
+sequences with constant deltas.
 
  - _8, 16, 24, 32, and 48 bit signed and unsigned absolute values._
  - _8, 16, 24, 32, and 48 bit signed deltas with per block initial value._
@@ -95,7 +95,40 @@ a block then scanning and compression can be skipped and it is only
 necessary to perform decompression when crossing block boundaries.
 Please note this initial prototype implementation is not thread safe.
 
-## Zip Vector Benchmarks
+## Future Work
+
+ - Support additional bit-widths
+   - The current scheme uses these widths: _2^(n), 2^(n+1) + 2^(n)_
+   - 1, 2, 3, 4, 6, and 12 bit deltas are still to be implemented.
+ - Improve codec scalar emulation fallback performance
+   - Some of the block codecs, namely the 24-bit and 48-bit codecs
+     use `TableLookupLanes` and `TableLookupBytes`  which are very
+     inefficient with the emulation fallback if AVX is not available.
+ - Improve bitmap slab allocator
+   - The current bitmap allocator uses a naive exhaustive first fit
+     algorithm.
+   - The slab bitmap could be partitioned based on page index to reduce
+     worst case scan performance at the expense of requiring rebalancing
+     of the slab partitions when the slab is resized.
+   - The slab could be made denser by using a stochastic best fit
+     algorithm that records size statistics to guide tactical choices
+     about which bitmap chunks are split to match statistical demand
+     for frequent block sizes.
+ - Add multi-threading support
+   - One approach is to add a per page reference count semaphore
+     and to simply keep pages that are being concurrently accessed
+     as uncompressed, with the last thread recompressing the page.
+     There is some complexity for synchronizing slab resizes.
+
+## Benchmarks
+
+Benchmarks are split into high level benchmarks for the array class
+and low-level benchmarks for the block compression codecs.
+
+- Zip Vector Array Benchmarks (benchmark program: `bench-zip-vector`)
+- Low Level Codec Benchmarks (benchmark program: `bench-zvec-codecs`)
+
+### Zip Vector Array Benchmarks
 
 Benchmark of in-order read-only traversal of a compressed array.
 
@@ -201,9 +234,9 @@ _zip_vector_ with 2D iteration
 |zip_vector_2D-abs-48          | 128MiW |  0.816 |  1,225,588,347 | 4675.249 |
 |zip_vector_2D-rel-48          | 128MiW |  0.894 |  1,118,325,013 | 4266.071 |
 
-## ZVec Codec Benchmarks
+### Low Level Codec Benchmarks
 
-Benchmarks for the _ZVec_ integer compression codecs.
+Benchmarks for the low level integer block compression codecs.
 
 #### ZVec Scan Block
 
