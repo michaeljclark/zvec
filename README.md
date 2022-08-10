@@ -9,7 +9,7 @@ using Google's Highway C++ library for portable SIMD/vector intrinsics.
 > traversal of arrays by lowering global memory bandwidth using
 > lightening fast vector compression.
 
-![zip-vector-delta-diagram](/images/zip-vector-delta.png)
+![zip-vector-delta-diagram](/images/zip-vector-delta.svg)
 
 ## Introduction
 
