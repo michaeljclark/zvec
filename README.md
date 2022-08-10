@@ -73,8 +73,9 @@ sequences with constant deltas.
 Compression efficiency ranges from _12.5% (8-bit)_ to _75% (48-bit)_
 or worst case 100% _(plus ~ 1% metadata overhead)_. The codecs can
 compress sign-extended values thus canonical pointers on _x86_64_ will
-use a maximum of 48-bits entropy but often a page of temporally
-coherent pointers can be compressed with 16-bit or 24-bit deltas.
+use a maximum of 48-bits. Sometimes pages of temporally coherent
+pointers can be compressed with 16-bit or 24-bit deltas or even a
+constant sequence simply using an initial value and delta.
 
 There is one active area in the slab per thread to cache the current
 page uncompressed. When a page boundary is crossed the active area is
