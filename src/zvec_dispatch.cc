@@ -53,58 +53,58 @@ static zvec_op_types_u64 zvec_ops_u64;
 
 #define ZVEC_INIT_ARCH(arch) \
 static void ZVEC_FN2(zvec_init,arch)() { \
-	zvec_ops_i64.encode_abs_x64_x8 = &ZVEC_FN2(zvec_ll_block_encode_abs_i64_i8,arch); \
-	zvec_ops_i64.encode_abs_x64_x16 = &ZVEC_FN2(zvec_ll_block_encode_abs_i64_i16,arch); \
-	zvec_ops_i64.encode_abs_x64_x24 = &ZVEC_FN2(zvec_ll_block_encode_abs_i64_i24,arch); \
-	zvec_ops_i64.encode_abs_x64_x32 = &ZVEC_FN2(zvec_ll_block_encode_abs_i64_i32,arch); \
-	zvec_ops_i64.encode_abs_x64_x48 = &ZVEC_FN2(zvec_ll_block_encode_abs_i64_i48,arch); \
-	zvec_ops_i64.decode_abs_x64_x8 = &ZVEC_FN2(zvec_ll_block_decode_abs_i64_i8,arch); \
-	zvec_ops_i64.decode_abs_x64_x16 = &ZVEC_FN2(zvec_ll_block_decode_abs_i64_i16,arch); \
-	zvec_ops_i64.decode_abs_x64_x24 = &ZVEC_FN2(zvec_ll_block_decode_abs_i64_i24,arch); \
-	zvec_ops_i64.decode_abs_x64_x32 = &ZVEC_FN2(zvec_ll_block_decode_abs_i64_i32,arch); \
-	zvec_ops_i64.decode_abs_x64_x48 = &ZVEC_FN2(zvec_ll_block_decode_abs_i64_i48,arch); \
-	zvec_ops_i64.encode_rel_x64_x8 = &ZVEC_FN2(zvec_ll_block_encode_rel_i64_i8,arch); \
-	zvec_ops_i64.encode_rel_x64_x16 = &ZVEC_FN2(zvec_ll_block_encode_rel_i64_i16,arch); \
-	zvec_ops_i64.encode_rel_x64_x24 = &ZVEC_FN2(zvec_ll_block_encode_rel_i64_i24,arch); \
-	zvec_ops_i64.encode_rel_x64_x32 = &ZVEC_FN2(zvec_ll_block_encode_rel_i64_i32,arch); \
-	zvec_ops_i64.encode_rel_x64_x48 = &ZVEC_FN2(zvec_ll_block_encode_rel_i64_i48,arch); \
-	zvec_ops_i64.decode_rel_x64_x8 = &ZVEC_FN2(zvec_ll_block_decode_rel_i64_i8,arch); \
-	zvec_ops_i64.decode_rel_x64_x16 = &ZVEC_FN2(zvec_ll_block_decode_rel_i64_i16,arch); \
-	zvec_ops_i64.decode_rel_x64_x24 = &ZVEC_FN2(zvec_ll_block_decode_rel_i64_i24,arch); \
-	zvec_ops_i64.decode_rel_x64_x32 = &ZVEC_FN2(zvec_ll_block_decode_rel_i64_i32,arch); \
-	zvec_ops_i64.decode_rel_x64_x48 = &ZVEC_FN2(zvec_ll_block_decode_rel_i64_i48,arch); \
-	zvec_ops_i64.scan_abs_x64 = &ZVEC_FN2(zvec_ll_block_scan_abs_i64,arch); \
-	zvec_ops_i64.scan_rel_x64 = &ZVEC_FN2(zvec_ll_block_scan_rel_i64,arch); \
-	zvec_ops_i64.scan_both_x64 = &ZVEC_FN2(zvec_ll_block_scan_both_i64,arch); \
-	zvec_ops_i64.synth_abs_x64 = &ZVEC_FN2(zvec_ll_block_synth_abs_i64,arch); \
-	zvec_ops_i64.synth_rel_x64 = &ZVEC_FN2(zvec_ll_block_synth_rel_i64,arch); \
-	zvec_ops_i64.synth_both_x64 = &ZVEC_FN2(zvec_ll_block_synth_both_i64,arch); \
-	zvec_ops_u64.encode_abs_x64_x8 = &ZVEC_FN2(zvec_ll_block_encode_abs_u64_u8,arch); \
-	zvec_ops_u64.encode_abs_x64_x16 = &ZVEC_FN2(zvec_ll_block_encode_abs_u64_u16,arch); \
-	zvec_ops_u64.encode_abs_x64_x24 = &ZVEC_FN2(zvec_ll_block_encode_abs_u64_u24,arch); \
-	zvec_ops_u64.encode_abs_x64_x32 = &ZVEC_FN2(zvec_ll_block_encode_abs_u64_u32,arch); \
-	zvec_ops_u64.encode_abs_x64_x48 = &ZVEC_FN2(zvec_ll_block_encode_abs_u64_u48,arch); \
-	zvec_ops_u64.decode_abs_x64_x8 = &ZVEC_FN2(zvec_ll_block_decode_abs_u64_u8,arch); \
-	zvec_ops_u64.decode_abs_x64_x16 = &ZVEC_FN2(zvec_ll_block_decode_abs_u64_u16,arch); \
-	zvec_ops_u64.decode_abs_x64_x24 = &ZVEC_FN2(zvec_ll_block_decode_abs_u64_u24,arch); \
-	zvec_ops_u64.decode_abs_x64_x32 = &ZVEC_FN2(zvec_ll_block_decode_abs_u64_u32,arch); \
-	zvec_ops_u64.decode_abs_x64_x48 = &ZVEC_FN2(zvec_ll_block_decode_abs_u64_u48,arch); \
-	zvec_ops_u64.encode_rel_x64_x8 = &ZVEC_FN2(zvec_ll_block_encode_rel_u64_u8,arch); \
-	zvec_ops_u64.encode_rel_x64_x16 = &ZVEC_FN2(zvec_ll_block_encode_rel_u64_u16,arch); \
-	zvec_ops_u64.encode_rel_x64_x24 = &ZVEC_FN2(zvec_ll_block_encode_rel_u64_u24,arch); \
-	zvec_ops_u64.encode_rel_x64_x32 = &ZVEC_FN2(zvec_ll_block_encode_rel_u64_u32,arch); \
-	zvec_ops_u64.encode_rel_x64_x48 = &ZVEC_FN2(zvec_ll_block_encode_rel_u64_u48,arch); \
-	zvec_ops_u64.decode_rel_x64_x8 = &ZVEC_FN2(zvec_ll_block_decode_rel_u64_u8,arch); \
-	zvec_ops_u64.decode_rel_x64_x16 = &ZVEC_FN2(zvec_ll_block_decode_rel_u64_u16,arch); \
-	zvec_ops_u64.decode_rel_x64_x24 = &ZVEC_FN2(zvec_ll_block_decode_rel_u64_u24,arch); \
-	zvec_ops_u64.decode_rel_x64_x32 = &ZVEC_FN2(zvec_ll_block_decode_rel_u64_u32,arch); \
-	zvec_ops_u64.decode_rel_x64_x48 = &ZVEC_FN2(zvec_ll_block_decode_rel_u64_u48,arch); \
-	zvec_ops_u64.scan_abs_x64 = &ZVEC_FN2(zvec_ll_block_scan_abs_u64,arch); \
-	zvec_ops_u64.scan_rel_x64 = &ZVEC_FN2(zvec_ll_block_scan_rel_u64,arch); \
-	zvec_ops_u64.scan_both_x64 = &ZVEC_FN2(zvec_ll_block_scan_both_u64,arch); \
-	zvec_ops_u64.synth_abs_x64 = &ZVEC_FN2(zvec_ll_block_synth_abs_u64,arch); \
-	zvec_ops_u64.synth_rel_x64 = &ZVEC_FN2(zvec_ll_block_synth_rel_u64,arch); \
-	zvec_ops_u64.synth_both_x64 = &ZVEC_FN2(zvec_ll_block_synth_both_u64,arch); }
+    zvec_ops_i64.encode_abs_x64_x8 = &ZVEC_FN2(zvec_ll_block_encode_abs_i64_i8,arch); \
+    zvec_ops_i64.encode_abs_x64_x16 = &ZVEC_FN2(zvec_ll_block_encode_abs_i64_i16,arch); \
+    zvec_ops_i64.encode_abs_x64_x24 = &ZVEC_FN2(zvec_ll_block_encode_abs_i64_i24,arch); \
+    zvec_ops_i64.encode_abs_x64_x32 = &ZVEC_FN2(zvec_ll_block_encode_abs_i64_i32,arch); \
+    zvec_ops_i64.encode_abs_x64_x48 = &ZVEC_FN2(zvec_ll_block_encode_abs_i64_i48,arch); \
+    zvec_ops_i64.decode_abs_x64_x8 = &ZVEC_FN2(zvec_ll_block_decode_abs_i64_i8,arch); \
+    zvec_ops_i64.decode_abs_x64_x16 = &ZVEC_FN2(zvec_ll_block_decode_abs_i64_i16,arch); \
+    zvec_ops_i64.decode_abs_x64_x24 = &ZVEC_FN2(zvec_ll_block_decode_abs_i64_i24,arch); \
+    zvec_ops_i64.decode_abs_x64_x32 = &ZVEC_FN2(zvec_ll_block_decode_abs_i64_i32,arch); \
+    zvec_ops_i64.decode_abs_x64_x48 = &ZVEC_FN2(zvec_ll_block_decode_abs_i64_i48,arch); \
+    zvec_ops_i64.encode_rel_x64_x8 = &ZVEC_FN2(zvec_ll_block_encode_rel_i64_i8,arch); \
+    zvec_ops_i64.encode_rel_x64_x16 = &ZVEC_FN2(zvec_ll_block_encode_rel_i64_i16,arch); \
+    zvec_ops_i64.encode_rel_x64_x24 = &ZVEC_FN2(zvec_ll_block_encode_rel_i64_i24,arch); \
+    zvec_ops_i64.encode_rel_x64_x32 = &ZVEC_FN2(zvec_ll_block_encode_rel_i64_i32,arch); \
+    zvec_ops_i64.encode_rel_x64_x48 = &ZVEC_FN2(zvec_ll_block_encode_rel_i64_i48,arch); \
+    zvec_ops_i64.decode_rel_x64_x8 = &ZVEC_FN2(zvec_ll_block_decode_rel_i64_i8,arch); \
+    zvec_ops_i64.decode_rel_x64_x16 = &ZVEC_FN2(zvec_ll_block_decode_rel_i64_i16,arch); \
+    zvec_ops_i64.decode_rel_x64_x24 = &ZVEC_FN2(zvec_ll_block_decode_rel_i64_i24,arch); \
+    zvec_ops_i64.decode_rel_x64_x32 = &ZVEC_FN2(zvec_ll_block_decode_rel_i64_i32,arch); \
+    zvec_ops_i64.decode_rel_x64_x48 = &ZVEC_FN2(zvec_ll_block_decode_rel_i64_i48,arch); \
+    zvec_ops_i64.scan_abs_x64 = &ZVEC_FN2(zvec_ll_block_scan_abs_i64,arch); \
+    zvec_ops_i64.scan_rel_x64 = &ZVEC_FN2(zvec_ll_block_scan_rel_i64,arch); \
+    zvec_ops_i64.scan_both_x64 = &ZVEC_FN2(zvec_ll_block_scan_both_i64,arch); \
+    zvec_ops_i64.synth_abs_x64 = &ZVEC_FN2(zvec_ll_block_synth_abs_i64,arch); \
+    zvec_ops_i64.synth_rel_x64 = &ZVEC_FN2(zvec_ll_block_synth_rel_i64,arch); \
+    zvec_ops_i64.synth_both_x64 = &ZVEC_FN2(zvec_ll_block_synth_both_i64,arch); \
+    zvec_ops_u64.encode_abs_x64_x8 = &ZVEC_FN2(zvec_ll_block_encode_abs_u64_u8,arch); \
+    zvec_ops_u64.encode_abs_x64_x16 = &ZVEC_FN2(zvec_ll_block_encode_abs_u64_u16,arch); \
+    zvec_ops_u64.encode_abs_x64_x24 = &ZVEC_FN2(zvec_ll_block_encode_abs_u64_u24,arch); \
+    zvec_ops_u64.encode_abs_x64_x32 = &ZVEC_FN2(zvec_ll_block_encode_abs_u64_u32,arch); \
+    zvec_ops_u64.encode_abs_x64_x48 = &ZVEC_FN2(zvec_ll_block_encode_abs_u64_u48,arch); \
+    zvec_ops_u64.decode_abs_x64_x8 = &ZVEC_FN2(zvec_ll_block_decode_abs_u64_u8,arch); \
+    zvec_ops_u64.decode_abs_x64_x16 = &ZVEC_FN2(zvec_ll_block_decode_abs_u64_u16,arch); \
+    zvec_ops_u64.decode_abs_x64_x24 = &ZVEC_FN2(zvec_ll_block_decode_abs_u64_u24,arch); \
+    zvec_ops_u64.decode_abs_x64_x32 = &ZVEC_FN2(zvec_ll_block_decode_abs_u64_u32,arch); \
+    zvec_ops_u64.decode_abs_x64_x48 = &ZVEC_FN2(zvec_ll_block_decode_abs_u64_u48,arch); \
+    zvec_ops_u64.encode_rel_x64_x8 = &ZVEC_FN2(zvec_ll_block_encode_rel_u64_u8,arch); \
+    zvec_ops_u64.encode_rel_x64_x16 = &ZVEC_FN2(zvec_ll_block_encode_rel_u64_u16,arch); \
+    zvec_ops_u64.encode_rel_x64_x24 = &ZVEC_FN2(zvec_ll_block_encode_rel_u64_u24,arch); \
+    zvec_ops_u64.encode_rel_x64_x32 = &ZVEC_FN2(zvec_ll_block_encode_rel_u64_u32,arch); \
+    zvec_ops_u64.encode_rel_x64_x48 = &ZVEC_FN2(zvec_ll_block_encode_rel_u64_u48,arch); \
+    zvec_ops_u64.decode_rel_x64_x8 = &ZVEC_FN2(zvec_ll_block_decode_rel_u64_u8,arch); \
+    zvec_ops_u64.decode_rel_x64_x16 = &ZVEC_FN2(zvec_ll_block_decode_rel_u64_u16,arch); \
+    zvec_ops_u64.decode_rel_x64_x24 = &ZVEC_FN2(zvec_ll_block_decode_rel_u64_u24,arch); \
+    zvec_ops_u64.decode_rel_x64_x32 = &ZVEC_FN2(zvec_ll_block_decode_rel_u64_u32,arch); \
+    zvec_ops_u64.decode_rel_x64_x48 = &ZVEC_FN2(zvec_ll_block_decode_rel_u64_u48,arch); \
+    zvec_ops_u64.scan_abs_x64 = &ZVEC_FN2(zvec_ll_block_scan_abs_u64,arch); \
+    zvec_ops_u64.scan_rel_x64 = &ZVEC_FN2(zvec_ll_block_scan_rel_u64,arch); \
+    zvec_ops_u64.scan_both_x64 = &ZVEC_FN2(zvec_ll_block_scan_both_u64,arch); \
+    zvec_ops_u64.synth_abs_x64 = &ZVEC_FN2(zvec_ll_block_synth_abs_u64,arch); \
+    zvec_ops_u64.synth_rel_x64 = &ZVEC_FN2(zvec_ll_block_synth_rel_u64,arch); \
+    zvec_ops_u64.synth_both_x64 = &ZVEC_FN2(zvec_ll_block_synth_both_u64,arch); }
 
 static zvec_arch override_arch = zvec_arch_unspecified;
 
@@ -161,7 +161,7 @@ static void zvec_init_x86()
 static void zvec_init()
 {
 #if HAS_X86_CPUID
-	zvec_init_x86();
+    zvec_init_x86();
 #else
     zvec_init_generic();
 #endif
@@ -169,12 +169,12 @@ static void zvec_init()
 
 zvec_op_types_i64* get_zvec_ops_i64()
 {
-	if (zvec_ops_i64.synth_rel_x64 == nullptr) zvec_init();
-	return &zvec_ops_i64;
+    if (zvec_ops_i64.synth_rel_x64 == nullptr) zvec_init();
+    return &zvec_ops_i64;
 }
 
 zvec_op_types_u64* get_zvec_ops_u64()
 {
-	if (zvec_ops_u64.synth_rel_x64 == nullptr) zvec_init();
-	return &zvec_ops_u64;
+    if (zvec_ops_u64.synth_rel_x64 == nullptr) zvec_init();
+    return &zvec_ops_u64;
 }
