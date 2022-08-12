@@ -1,5 +1,5 @@
 #undef NDEBUG
-#define ZIP_VECTOR_TRACE 0
+#define ZIP_VECTOR_TRACE 1
 #include <zip_vector.h>
 #include "test-zip-vector-common.h"
 
@@ -54,8 +54,8 @@ void t1()
     dump_index(vec);
 }
 
-int main(int argc, char **argv)
+int main(int argc, const char **argv)
 {
-    zvec_logger::set_level(zvec_logger::Ltrace);
+    parse_options(argc, argv);
     t1();
 }

@@ -1,5 +1,5 @@
 #undef NDEBUG
-#define ZIP_VECTOR_TRACE 0
+#define ZIP_VECTOR_TRACE 1
 #include <zip_vector.h>
 #include "test-zip-vector-common.h"
 
@@ -16,8 +16,7 @@ void t1()
     block_random<i64> rng;
     zip_vector<i64> vec;
 
-    printf("sizeof(vertex)=%zu\n", sizeof(vertex));
-
+    /* visual inspection of index for pointer array */
     vec.resize(512);
     for (size_t i = 0; i < 512; i++) {
         vec[i] = (intptr_t)(void*)malloc(sizeof(vertex));
@@ -27,10 +26,8 @@ void t1()
     dump_index(vec);
 }
 
-int main(int argc, char **argv)
+int main(int argc, const char **argv)
 {
-    #if ZIP_VECTOR_TRACE
-        zvec_logger::set_level(zvec_logger::Ltrace);
-    #endif
+    parse_options(argc, argv);
     t1();
 }

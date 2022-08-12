@@ -37,7 +37,7 @@ struct block_random
         dist_i63(-(1ull<<62)+1,(1ull<<62)-1ull),
         counter(0),
         state(-1),
-        value(0),
+        value(dist_i63(engine)),
         delta(0)
     {}
 
@@ -86,6 +86,17 @@ struct block_random
 };
 
 template <typename ZV>
+size_t bitmap_count(ZV& vec)
+{
+
+    size_t count = 0;
+    for (size_t i = 0; i < vec._slab_limit >> 12; i++) {
+        count += popcnt(vec._bmap_data[i]);
+    }
+    return count;
+}
+
+template <typename ZV>
 void dump_index(ZV& vec)
 {
     printf("--- dump index ---\n");
@@ -123,4 +134,15 @@ void dump_index(ZV& vec)
     printf("page_ratio  : %5.1f%%\n", page_ratio);
     printf("total_ratio : %5.1f%%\n", total_ratio);
     printf("meta_ratio  : %5.1f%%\n", meta_ratio);
+}
+
+void parse_options(int argc, const char **argv)
+{
+    #if ZIP_VECTOR_TRACE
+    if (argc == 2 && strcmp(argv[1], "-d") == 0) {
+        zvec_logger::set_level(zvec_logger::Ldebug);
+    } else if (argc == 2 && strcmp(argv[1], "-t") == 0) {
+        zvec_logger::set_level(zvec_logger::Ltrace);
+    }
+    #endif
 }

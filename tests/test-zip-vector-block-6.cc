@@ -1,5 +1,5 @@
 #undef NDEBUG
-#define ZIP_VECTOR_TRACE 0
+#define ZIP_VECTOR_TRACE 1
 #include <zip_vector.h>
 #include "test-zip-vector-common.h"
 
@@ -9,14 +9,19 @@ void t1()
     std::vector<i64> cvec;
     zip_vector<i64> zvec;
 
-    cvec.resize(65536);
-    zvec.resize(65536);
-    for (size_t j = 0; j < 128; j++) {
+    enum test : size_t { test_size = 65536, num_rewrites = 128 };
+
+    /* write pathologically distributed random values to array
+     * and a check array. this test check sums all block modes */
+    cvec.resize(test_size);
+    zvec.resize(test_size);
+    for (size_t j = 0; j < num_rewrites; j++) {
         for (size_t i = 0; i < cvec.size(); i++) {
             cvec[i] = zvec[i] = rng.val();
         }
     }
 
+    /* check sum against control vector */
     i64 sum1 = 0, sum2 = 0;
     for (auto v : cvec) {
         sum1 += (i64)v;
@@ -24,7 +29,6 @@ void t1()
     for (auto v : zvec) {
         sum2 += (i64)v;
     }
-
     assert(sum1 == sum2);
 
     zvec.sync();
@@ -32,10 +36,8 @@ void t1()
     dump_index(zvec);
 }
 
-int main(int argc, char **argv)
+int main(int argc, const char **argv)
 {
-    #if ZIP_VECTOR_TRACE
-        zvec_logger::set_level(zvec_logger::Ltrace);
-    #endif
+    parse_options(argc, argv);
     t1();
 }
