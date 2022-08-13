@@ -18,6 +18,11 @@ using namespace std::chrono;
 
 using timepoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
+static std::string cpu_arch;
+static bool help_text = false;
+static int bench_num = -1;
+static size_t bench_size = 128 * 1024 * 1024;
+
 struct bench_result
 {
     std::string name;
@@ -281,21 +286,102 @@ static void bench_vector(std::string suffix, size_t runs, size_t n, T(R::*func)(
     bench_zip_vector_2D(suffix, runs, n, func);
 }
 
+/* benchmark option processing */
+
+void print_help(int argc, char **argv)
+{
+    fprintf(stderr,
+        "Usage: %s [options] [args]\n"
+        "  -h, --help                            command line help\n"
+        "  -n, --bench-num [num]                 run specific benchmark\n"
+        "  -s, --bench-size [size(K|M|G)?]       specify benchmark size\n"
+        "  -a, --cpu-arch {generic,avx1,avx3}    override cpu detection\n",
+        argv[0]);
+}
+
+bool check_param(bool cond, const char *param)
+{
+    if (cond) {
+        printf("error: %s requires parameter\n", param);
+    }
+    return (help_text = cond);
+}
+
+bool match_opt(const char *arg, const char *opt, const char *longopt)
+{
+    return strcmp(arg, opt) == 0 || strcmp(arg, longopt) == 0;
+}
+
+size_t parse_size(const char *str)
+{
+    size_t l = strlen(str);
+    size_t n = (size_t)atoll(str);
+    if (l >= 2 && isdigit(str[l-2])) {
+        switch (str[l-1]) {
+        case 'G': n *= 1024;
+        case 'M': n *= 1024;
+        case 'K': n *= 1024;
+        default: break;
+        }
+    }
+    return n;
+}
+
+void parse_options(int argc, char **argv)
+{
+    int i = 1;
+    while (i < argc) {
+        if (match_opt(argv[i], "-h", "--help")) {
+            help_text = true;
+            i++;
+        } else if (match_opt(argv[i], "-n", "--bench-num")) {
+            if (check_param(++i == argc, "--bench-num")) break;
+            bench_num = atoi(argv[i++]);
+        } else if (match_opt(argv[i], "-s", "--bench-size")) {
+            if (check_param(++i == argc, "--bench-size")) break;
+            bench_size = parse_size(argv[i++]);
+        } else if (match_opt(argv[i], "-a", "--cpu-arch")) {
+            if (check_param(++i == argc, "--cpu-arch")) break;
+            cpu_arch = argv[i++];
+        } else {
+            fprintf(stderr, "error: unknown option: %s\n", argv[i]);
+            help_text = true;
+            break;
+        }
+    }
+
+    if (cpu_arch.size() > 0) {
+        if (cpu_arch == "generic") zvec_set_override(zvec_arch_generic);
+        else if (cpu_arch == "avx1") zvec_set_override(zvec_arch_x86_avx1);
+        else if (cpu_arch == "avx3") zvec_set_override(zvec_arch_x86_avx3);
+        else {
+            fprintf(stderr, "error: invalid cpu arch: %s\n", cpu_arch.c_str());
+            help_text = true;
+        }
+    }
+
+    if (help_text) {
+        print_help(argc, argv);
+        exit(1);
+    }
+
+}
+
+bool run_bench(int num) { return bench_num == num || bench_num == -1; }
+
 int main(int argc, char **argv)
 {
-    //zvec_logger::set_level(zvec_logger::Ltrace);
-    //zvec_set_override(zvec_arch_x86_avx3);
-
+    parse_options(argc, argv);
     print_header();
-    bench_vector<i64>("-abs-8", 5, 128*1024*1024, &bench_random<i64>::abs_i7);
-    bench_vector<i64>("-rel-8", 5, 128*1024*1024, &bench_random<i64>::rel_i7);
-    bench_vector<i64>("-abs-16", 5, 128*1024*1024, &bench_random<i64>::abs_i15);
-    bench_vector<i64>("-rel-16", 5, 128*1024*1024, &bench_random<i64>::rel_i15);
-    bench_vector<i64>("-abs-24", 5, 128*1024*1024, &bench_random<i64>::abs_i23);
-    bench_vector<i64>("-rel-24", 5, 128*1024*1024, &bench_random<i64>::rel_i23);
-    bench_vector<i64>("-abs-32", 5, 128*1024*1024, &bench_random<i64>::abs_i31);
-    bench_vector<i64>("-rel-32", 5, 128*1024*1024, &bench_random<i64>::rel_i31);
-    bench_vector<i64>("-abs-48", 5, 128*1024*1024, &bench_random<i64>::abs_i47);
-    bench_vector<i64>("-rel-48", 5, 128*1024*1024, &bench_random<i64>::rel_i47);
+    if (run_bench(1)) bench_vector<i64>("-abs-8", 5, bench_size, &bench_random<i64>::abs_i7);
+    if (run_bench(2)) bench_vector<i64>("-rel-8", 5, bench_size, &bench_random<i64>::rel_i7);
+    if (run_bench(3)) bench_vector<i64>("-abs-16", 5, bench_size, &bench_random<i64>::abs_i15);
+    if (run_bench(4)) bench_vector<i64>("-rel-16", 5, bench_size, &bench_random<i64>::rel_i15);
+    if (run_bench(5)) bench_vector<i64>("-abs-24", 5, bench_size, &bench_random<i64>::abs_i23);
+    if (run_bench(6)) bench_vector<i64>("-rel-24", 5, bench_size, &bench_random<i64>::rel_i23);
+    if (run_bench(7)) bench_vector<i64>("-abs-32", 5, bench_size, &bench_random<i64>::abs_i31);
+    if (run_bench(8)) bench_vector<i64>("-rel-32", 5, bench_size, &bench_random<i64>::rel_i31);
+    if (run_bench(9)) bench_vector<i64>("-abs-48", 5, bench_size, &bench_random<i64>::abs_i47);
+    if (run_bench(10)) bench_vector<i64>("-rel-48", 5, bench_size, &bench_random<i64>::rel_i47);
     print_footer();
 }
