@@ -30,9 +30,6 @@
 
 #if defined(ZVECTOR_ARCH_X86_AVX3)
 #define ZVECTOR_ARCH x86_avx3
-#elif defined(ZVECTOR_ARCH_X86_AVX1)
-#define ZVECTOR_ARCH x86_avx1
-#define ZVECTOR_USE_SCALAR
 #else
 #define ZVECTOR_ARCH generic
 #define ZVECTOR_USE_SCALAR

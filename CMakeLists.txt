@@ -39,12 +39,6 @@ set(zvec_sources
     src/zvec_dispatch.cc
     src/zvec_arch_generic.cc)
 
-if (has_march_sandybridge)
-  list(APPEND zvec_sources src/zvec_arch_x86_avx1.cc)
-  set_source_files_properties(src/zvec_arch_x86_avx1.cc
-    PROPERTIES COMPILE_FLAGS -march=sandybridge)
-endif()
-
 if (has_march_skylake_avx512)
   list(APPEND zvec_sources src/zvec_arch_x86_avx3.cc)
   set_source_files_properties(src/zvec_arch_x86_avx3.cc
@@ -53,9 +47,6 @@ endif()
 
 add_library(zvec ${zvec_sources})
 
-if (has_march_sandybridge)
-  target_compile_definitions(zvec PRIVATE ZVEC_HAS_AVX1)
-endif()
 if (has_march_skylake_avx512)
   target_compile_definitions(zvec PRIVATE ZVEC_HAS_AVX3)
 endif()
@@ -79,12 +70,6 @@ endif()
 
 add_executable(test-zvec-ll-generic tests/test-zvec-ll-generic.cc)
 target_link_libraries(test-zvec-ll-generic zvec hwy)
-
-if (has_march_sandybridge)
-  add_executable(test-zvec-ll-x86-avx1 tests/test-zvec-ll-x86-avx1.cc)
-  target_link_libraries(test-zvec-ll-x86-avx1 zvec hwy)
-  target_compile_options(test-zvec-ll-x86-avx1 PRIVATE -march=sandybridge)
-endif()
 
 if (has_march_skylake_avx512)
   add_executable(test-zvec-ll-x86-avx3 tests/test-zvec-ll-x86-avx3.cc)

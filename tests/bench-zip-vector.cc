@@ -295,7 +295,7 @@ void print_help(int argc, char **argv)
         "  -h, --help                            command line help\n"
         "  -n, --bench-num [num]                 run specific benchmark\n"
         "  -s, --bench-size [size(K|M|G)?]       specify benchmark size\n"
-        "  -a, --cpu-arch {generic,avx1,avx3}    override cpu detection\n",
+        "  -a, --cpu-arch {generic,avx3}         override cpu detection\n",
         argv[0]);
 }
 
@@ -352,7 +352,6 @@ void parse_options(int argc, char **argv)
 
     if (cpu_arch.size() > 0) {
         if (cpu_arch == "generic") zvec_set_override(zvec_arch_generic);
-        else if (cpu_arch == "avx1") zvec_set_override(zvec_arch_x86_avx1);
         else if (cpu_arch == "avx3") zvec_set_override(zvec_arch_x86_avx3);
         else {
             fprintf(stderr, "error: invalid cpu arch: %s\n", cpu_arch.c_str());

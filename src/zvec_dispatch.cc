@@ -23,12 +23,6 @@
 #define ZVECTOR_ARCH generic
 #include "zvec_arch.inc"
 
-#ifdef ZVEC_HAS_AVX1
-#undef ZVECTOR_ARCH
-#define ZVECTOR_ARCH x86_avx1
-#include "zvec_arch.inc"
-#endif
-
 #ifdef ZVEC_HAS_AVX3
 #undef ZVECTOR_ARCH
 #define ZVECTOR_ARCH x86_avx3
@@ -113,8 +107,9 @@ void zvec_set_override(zvec_arch arch) { override_arch = arch; }
 ZVEC_INIT_ARCH(generic)
 
 #if HAS_X86_CPUID
-ZVEC_INIT_ARCH(x86_avx1)
+#ifdef ZVEC_HAS_AVX3
 ZVEC_INIT_ARCH(x86_avx3)
+#endif
 
 union x86_cpuid_info
 {
@@ -139,20 +134,14 @@ static void zvec_init_x86()
 
     switch (override_arch) {
     case zvec_arch_generic: zvec_init_generic(); return;
-#ifdef ZVEC_HAS_AVX1
-    case zvec_arch_x86_avx1: zvec_init_x86_avx1(); return;
-#endif
 #ifdef ZVEC_HAS_AVX3
     case zvec_arch_x86_avx3: zvec_init_x86_avx3(); return;
 #endif
     default: break;
     }
 
-#ifdef ZVEC_HAS_AVX1
-    if (X86_HAS_AVX512DQ) zvec_init_x86_avx3(); else
-#endif
 #ifdef ZVEC_HAS_AVX3
-    if (X86_HAS_AVX) zvec_init_x86_avx1(); else
+    if (X86_HAS_AVX512DQ) zvec_init_x86_avx3(); else
 #endif
     zvec_init_generic();
 }

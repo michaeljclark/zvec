@@ -52,7 +52,6 @@ using zvec_op_types_u64 = zvec_op_types<u64,u48,u32,u24,u16,u8>;
 enum zvec_arch {
     zvec_arch_unspecified,
     zvec_arch_generic,
-    zvec_arch_x86_avx1,
     zvec_arch_x86_avx3
 };
 
