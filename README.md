@@ -101,10 +101,6 @@ Please note this initial prototype implementation is not thread safe.
  - Support additional bit-widths
    - The current scheme uses these widths: _2^(n), 2^(n+1) + 2^(n)_
    - 1, 2, 3, 4, 6, and 12 bit deltas are still to be implemented.
- - Improve codec scalar emulation fallback performance
-   - Some of the block codecs, namely the 24-bit and 48-bit codecs
-     use `TableLookupLanes` and `TableLookupBytes`  which are very
-     inefficient with the emulation fallback if AVX is not available.
  - Improve bitmap slab allocator
    - The current bitmap allocator uses a naive exhaustive first fit
      algorithm.

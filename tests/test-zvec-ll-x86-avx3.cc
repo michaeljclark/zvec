@@ -1,2 +1,2 @@
-#define ZVECTOR_ARCH x86_avx3
+#define ZVECTOR_ARCH_X86_AVX3
 #include "test-zvec-ll-codecs.inc"

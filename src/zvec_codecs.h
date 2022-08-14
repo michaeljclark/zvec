@@ -28,8 +28,14 @@
 
 #include <hwy/highway.h>
 
-#ifndef ZVECTOR_ARCH
+#if defined(ZVECTOR_ARCH_X86_AVX3)
+#define ZVECTOR_ARCH x86_avx3
+#elif defined(ZVECTOR_ARCH_X86_AVX1)
+#define ZVECTOR_ARCH x86_avx1
+#define ZVECTOR_USE_SCALAR
+#else
 #define ZVECTOR_ARCH generic
+#define ZVECTOR_USE_SCALAR
 #endif
 
 #define ZVEC_CAT4(a,b,c,d) a ## _ ## b ## _ ## c ## _ ## d
@@ -465,6 +471,164 @@ void ZVEC_ARCH_FN1(zvec_ll_block_decode_rel)(T * __restrict x, S * __restrict r,
     	Store(v2, d, x+i);
     }
 }
+
+#if defined(ZVECTOR_USE_SCALAR)
+
+template<zvec_codec codec, typename T>
+void ZVEC_ARCH_FN2(zvec_ll_block_encode,x24)(T * __restrict x, typename std::conditional<std::is_signed<T>::value,i24,u24>::type * __restrict r, size_t N, i64 iv)
+{
+    T v0 = iv;
+    T d0, d1, d2, d3, w0, w1, w2, w3;
+    for (size_t i = 0, j = 0; i < N; i += 4, j += 3)
+    {
+        if constexpr (codec == zvec_block_rel)
+        {
+            d0 = x[i + 0];
+            d1 = x[i + 1];
+            d2 = x[i + 2];
+            d3 = x[i + 3];
+
+            w0 = d0 - v0;
+            w1 = d1 - d0;
+            w2 = d2 - d1;
+            w3 = d3 - d2;
+
+            v0 = d3;
+        } else {
+            w0 = x[i + 0];
+            w1 = x[i + 1];
+            w2 = x[i + 2];
+            w3 = x[i + 3];
+        }
+
+        u32 r0 = (w0        & 0xffffff) | ((w1 & 0xff) << 24);
+        u32 r1 = ((w1 >> 8) & 0xffff)   | ((w2 & 0xffff) << 16);
+        u32 r2 = ((w2 >> 16) & 0xff)    | ((w3 & 0xffffff) << 8);
+
+        *((u32*)r + j + 0) = r0;
+        *((u32*)r + j + 1) = r1;
+        *((u32*)r + j + 2) = r2;
+    }
+}
+
+template<zvec_codec codec, typename T>
+void ZVEC_ARCH_FN2(zvec_ll_block_decode,x24)(T * __restrict x, typename std::conditional<std::is_signed<T>::value,i24,u24>::type * __restrict r, size_t N, i64 iv)
+{
+    T v0 = iv;
+    T r0, r1, r2, s0, s1, s2, s3;
+    for (size_t i = 0, j = 0; i < N; i += 4, j += 3)
+    {
+        r0 = *((u32*)r + j + 0);
+        r1 = *((u32*)r + j + 1);
+        r2 = *((u32*)r + j + 2);
+
+        s0 =                          (r0 & 0xffffff);
+        s1 = ((r0 >> 24) & 0xff)   | ((r1 & 0xffff) << 8);
+        s2 = ((r1 >> 16) & 0xffff) | ((r2 & 0xff) << 16);
+        s3 =  (r2 >> 8);
+
+        if (std::is_signed<T>::value) {
+            s0 = (s0 << 40) >> 40;
+            s1 = (s1 << 40) >> 40;
+            s2 = (s2 << 40) >> 40;
+            s3 = (s3 << 40) >> 40;
+        }
+
+        if constexpr (codec == zvec_block_rel)
+        {
+            s0 += v0;
+            s1 += s0;
+            s2 += s1;
+            s3 += s2;
+
+            v0 = s3;
+        }
+
+        x[i + 0] = s0;
+        x[i + 1] = s1;
+        x[i + 2] = s2;
+        x[i + 3] = s3;
+    }
+}
+
+template<zvec_codec codec, typename T>
+void ZVEC_ARCH_FN2(zvec_ll_block_encode,x48)(T * __restrict x, typename std::conditional<std::is_signed<T>::value,i48,u48>::type * __restrict r, size_t N, T iv)
+{
+    T v0 = iv;
+    T d0, d1, d2, d3, w0, w1, w2, w3;
+    for (size_t i = 0, j = 0; i < N; i += 4, j += 3)
+    {
+        if constexpr (codec == zvec_block_rel)
+        {
+            d0 = x[i + 0];
+            d1 = x[i + 1];
+            d2 = x[i + 2];
+            d3 = x[i + 3];
+
+            w0 = d0 - v0;
+            w1 = d1 - d0;
+            w2 = d2 - d1;
+            w3 = d3 - d2;
+
+            v0 = d3;
+        } else {
+            w0 = x[i + 0];
+            w1 = x[i + 1];
+            w2 = x[i + 2];
+            w3 = x[i + 3];
+        }
+
+        u64 r0 = ((w0 >> 0) & 0xffffffffffff) | ((w1 & 0xffff) << 48);
+        u64 r1 = ((w1 >> 16) & 0xffffffff)   | ((w2 & 0xffffffff) << 32);
+        u64 r2 = ((w2 >> 32) & 0xffff)    | ((w3 & 0xffffffffffff) << 16);
+
+        *((u64*)r + j + 0) = r0;
+        *((u64*)r + j + 1) = r1;
+        *((u64*)r + j + 2) = r2;
+    }
+}
+
+template<zvec_codec codec, typename T>
+void ZVEC_ARCH_FN2(zvec_ll_block_decode,x48)(T * __restrict x, typename std::conditional<std::is_signed<T>::value,i48,u48>::type * __restrict r, size_t N, T iv)
+{
+    T v0 = iv;
+    T r0, r1, r2, s0, s1, s2, s3;
+    for (size_t i = 0, j = 0; i < N; i += 4, j += 3)
+    {
+        r0 = *((u64*)r + j + 0);
+        r1 = *((u64*)r + j + 1);
+        r2 = *((u64*)r + j + 2);
+
+        s0 =                                 (r0 & 0xffffffffffffull);
+        s1 = ((r0 >> 48) & 0xffffull)     | ((r1 & 0xffffffffull) << 16);
+        s2 = ((r1 >> 32) & 0xffffffffull) | ((r2 & 0xffffull) << 32);
+        s3 =  (r2 >> 16);
+
+        if (std::is_signed<T>::value) {
+            s0 = (s0 << 16) >> 16;
+            s1 = (s1 << 16) >> 16;
+            s2 = (s2 << 16) >> 16;
+            s3 = (s3 << 16) >> 16;
+        }
+
+        if constexpr (codec == zvec_block_rel)
+        {
+            s0 += v0;
+            s1 += s0;
+            s2 += s1;
+            s3 += s2;
+
+            v0 = s3;
+        }
+
+        x[i + 0] = s0;
+        x[i + 1] = s1;
+        x[i + 2] = s2;
+        x[i + 3] = s3;
+    }
+}
+
+#else
 
 template<zvec_codec codec, typename T>
 void ZVEC_ARCH_FN2(zvec_ll_block_encode,x24)(T * __restrict x, typename std::conditional<std::is_signed<T>::value,i24,u24>::type * __restrict r, size_t N, i64 iv)
@@ -965,6 +1129,8 @@ void ZVEC_ARCH_FN2(zvec_ll_block_decode,x48)(T * __restrict x, typename std::con
         Store(s3, d, x + i + L * 3);
     }
 }
+
+#endif
 
 template <typename T>
 void ZVEC_ARCH_FN1(zvec_ll_block_encode_rel)(T * __restrict x, i24 * __restrict r, size_t N, T iv)
