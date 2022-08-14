@@ -11,18 +11,18 @@ void t1()
     enum test : size_t { test_size = 8192, page_interval = 512 };
 
     /* cause 7-bit random (with base) to be written to the array */
-    u64 sum1 = 0, sum2 = 0;
+    u64 s1 = 0, s2 = 0;
     vec.resize(test_size);
     for (size_t i = 0; i < test_size; i++) {
-        sum1 += (vec[i] = rng.rel_i7());
+        s1 += (vec[i] = rng.rel_i7());
     }
     vec.sync();
 
     /* check sum */
     for (size_t i = 0; i < test_size; i++) {
-        sum2 += vec[i];
+        s2 += vec[i];
     }
-    assert(sum1 == sum2);
+    assert(s1 == s2);
 
     /* check index */
     for (size_t i = 0; i < test_size/page_interval; i++) {

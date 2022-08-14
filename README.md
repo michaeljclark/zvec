@@ -41,15 +41,15 @@ does support iterators.
         vec[i] = i;
     }
 
-    int64_t sum1 = 0, sum2 = 0;
+    int64_t s1 = 0, s2 = 0;
     for (size_t i = 0; i < vec.size(); i++) {
-        sum1 += vec[i];
+        s1 += vec[i];
     }
     for (auto v : vec) {
-        sum2 += v;
+        s2 += v;
     }
 
-    assert(sum1 == sum2);
+    assert(s1 == s2);
 ```
 
 ## Implementation Notes

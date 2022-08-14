@@ -22,14 +22,14 @@ void t1()
     }
 
     /* check sum against control vector */
-    i64 sum1 = 0, sum2 = 0;
+    i64 s1 = 0, s2 = 0;
     for (auto v : cvec) {
-        sum1 += (i64)v;
+        s1 += (i64)v;
     }
     for (auto v : zvec) {
-        sum2 += (i64)v;
+        s2 += (i64)v;
     }
-    assert(sum1 == sum2);
+    assert(s1 == s2);
 
     zvec.sync();
 

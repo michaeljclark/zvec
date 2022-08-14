@@ -10,15 +10,15 @@ static __attribute__((noinline)) void test_zip_vector_1D(size_t n, T(R::*func)()
     zip_vector<T> vec;
 
     /* checksum test largish vector for consistency after slab resize */
-    T sum1 = 0, sum2 = 0;
+    T s1 = 0, s2 = 0;
     vec.resize(n);
     for (size_t i = 0; i < n; i++) {
-        sum1 += (vec[i] = (rng.*func)());
+        s1 += (vec[i] = (rng.*func)());
     }
 
     /* check sum */
-    for (auto x : vec) sum2 += x;
-    assert(sum1 == sum2);
+    for (auto x : vec) s2 += x;
+    assert(s1 == s2);
 
     vec.sync();
 

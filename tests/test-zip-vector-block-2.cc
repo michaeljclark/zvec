@@ -18,12 +18,12 @@ void t1()
     vec.sync();
 
     /* check sum */
-    size_t sum1 = 0, sum2 = 0;
+    size_t s1 = 0, s2 = 0;
     for (size_t i = 0; i < test_size; i++) {
-        sum1 += i;
-        sum2 += vec[i];
+        s1 += i;
+        s2 += vec[i];
     }
-    assert(sum1 == sum2);
+    assert(s1 == s2);
 
     /* check index */
     for (size_t i = 0; i < test_size/page_interval; i++) {
