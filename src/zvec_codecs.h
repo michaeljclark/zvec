@@ -368,8 +368,9 @@ void ZVEC_ARCH_FN1(zvec_ll_block_encode_abs)(T * __restrict x, S * __restrict r,
 
     const ScalableTag<T> d;
     const ScalableTag<x32> w;
-    const ScalableTag<i32> ws;
+    const ScalableTag<u32> wu;
     const Rebind<S, decltype(d)> dw;
+    const RebindToUnsigned<decltype(dw)> dwu;
 
     const size_t L = Lanes(d);
     const size_t K = Lanes(w);
@@ -388,7 +389,7 @@ void ZVEC_ARCH_FN1(zvec_ll_block_encode_abs)(T * __restrict x, S * __restrict r,
         if constexpr (sizeof(S) == 4) {
             Store(LowerHalf(v2), dw, r+i);
         } else {
-            Store(DemoteTo(dw, LowerHalf(BitCast(ws, v2))), dw, r+i);
+            Store(BitCast(dw, TruncateTo(dwu, LowerHalf(BitCast(wu, v2)))), dw, r+i);
         }
     }
 }
@@ -419,8 +420,9 @@ void ZVEC_ARCH_FN1(zvec_ll_block_encode_rel)(T * __restrict x, S * __restrict r,
 
     const ScalableTag<T> d;
     const ScalableTag<x32> w;
-    const ScalableTag<i32> ws;
+    const ScalableTag<u32> wu;
     const Rebind<S, decltype(d)> dw;
+    const RebindToUnsigned<decltype(dw)> dwu;
 
     const size_t L = Lanes(d);
     const size_t K = Lanes(w);
@@ -443,7 +445,7 @@ void ZVEC_ARCH_FN1(zvec_ll_block_encode_rel)(T * __restrict x, S * __restrict r,
         if constexpr (sizeof(S) == 4) {
             Store(LowerHalf(v4), dw, r+i);
         } else {
-            Store(DemoteTo(dw, LowerHalf(BitCast(ws, v4))), dw, r+i);
+            Store(BitCast(dw, TruncateTo(dwu, LowerHalf(BitCast(wu, v4)))), dw, r+i);
         }
     }
 }
