@@ -2,12 +2,19 @@
 
 import csv
 import math
+import argparse
 import collections
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-infile = "tmp/bench.dat"
+parser = argparse.ArgumentParser(description='plots benchmark charts')
+parser.add_argument('-i', '--input-file', required=True, default='tmp/bench.dat')
+parser.add_argument('-o', '--output-pattern', required=True, default='images/bench-%s.png')
+args = parser.parse_args()
+
+infile = args.input_file
+outpat = args.output_pattern
 
 data = {}
 
@@ -69,7 +76,7 @@ def plot_bench_zvec_scan():
     plt.plot(x_data, data['scan_both_mib_sec'],     'tab:gray',   ls='-',         marker='x', ms=4, label='scan-both',     alpha=0.5)
     plt.legend(title="Benchmark", fontsize=9, title_fontsize=10.5)
     plt.tight_layout()
-    plt.savefig("images/bench-zvec-scan.png", dpi=240)
+    plt.savefig(outpat % 'zvec-scan', dpi=240)
 
 def plot_bench_zvec_synth():
     plt = make_plot('zvec-synthesize-block')
@@ -78,7 +85,7 @@ def plot_bench_zvec_synth():
     plt.plot(x_data, data['synth_seq_mib_sec'],     'tab:cyan',   ls='-',         marker='v', ms=4, label='synth-seq',     alpha=0.5)
     plt.legend(title="Benchmark", fontsize=9, title_fontsize=10.5)
     plt.tight_layout()
-    plt.savefig("images/bench-zvec-synth.png", dpi=240)
+    plt.savefig(outpat % 'zvec-synth', dpi=240)
 
 def plot_bench_zvec_encode():
     plt = make_plot('zvec-encode-block')
@@ -94,7 +101,7 @@ def plot_bench_zvec_encode():
     plt.plot(x_data, data['encode_abs_48_mib_sec'], 'tab:brown',  ls=(0, (2, 1)), marker='s', ms=4, label='encode-abs-48', alpha=0.5)
     plt.legend(title="Benchmark", fontsize=9, title_fontsize=10.5)
     plt.tight_layout()
-    plt.savefig("images/bench-zvec-encode.png", dpi=240)
+    plt.savefig(outpat % 'zvec-encode', dpi=240)
 
 def plot_bench_zvec_decode():
     plt = make_plot('zvec-decode-block')
@@ -110,7 +117,7 @@ def plot_bench_zvec_decode():
     plt.plot(x_data, data['decode_abs_48_mib_sec'], 'tab:brown',  ls=(0, (2, 0)), marker='s', ms=4, label='decode-abs-48', alpha=0.5)
     plt.legend(title="Benchmark", fontsize=9, title_fontsize=10.5)
     plt.tight_layout()
-    plt.savefig("images/bench-zvec-decode.png", dpi=240)
+    plt.savefig(outpat % 'zvec-decode', dpi=240)
 
 plot_bench_zvec_scan()
 plot_bench_zvec_synth()
