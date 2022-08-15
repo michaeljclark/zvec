@@ -15,39 +15,64 @@
 
 #pragma once
 
-template<typename X64,typename X48, typename X32, typename X24, typename X16, typename X8>
-struct zvec_op_types
+template<typename T, typename X48, typename X32, typename X24, typename X16, typename X8>
+struct zvec_op_types_64
 {
-    void (*encode_abs_x64_x8)(X64 *x, X8 *r, size_t n);
-    void (*encode_abs_x64_x16)(X64 *x, X16 *r, size_t n);
-    void (*encode_abs_x64_x24)(X64 *x, X24 *r, size_t n);
-    void (*encode_abs_x64_x32)(X64 *x, X32 *r, size_t n);
-    void (*encode_abs_x64_x48)(X64 *x, X48 *r, size_t n);
-    void (*decode_abs_x64_x8)(X64 *x, X8 *r, size_t n);
-    void (*decode_abs_x64_x16)(X64 *x, X16 *r, size_t n);
-    void (*decode_abs_x64_x24)(X64 *x, X24 *r, size_t n);
-    void (*decode_abs_x64_x32)(X64 *x, X32 *r, size_t n);
-    void (*decode_abs_x64_x48)(X64 *x, X48 *r, size_t n);
-    void (*encode_rel_x64_x8)(X64 *x, X8 *r, size_t n, X64 iv);
-    void (*encode_rel_x64_x16)(X64 *x, X16 *r, size_t n, X64 iv);
-    void (*encode_rel_x64_x24)(X64 *x, X24 *r, size_t n, X64 iv);
-    void (*encode_rel_x64_x32)(X64 *x, X32 *r, size_t n, X64 iv);
-    void (*encode_rel_x64_x48)(X64 *x, X48 *r, size_t n, X64 iv);
-    void (*decode_rel_x64_x8)(X64 *x, X8 *r, size_t n, X64 iv);
-    void (*decode_rel_x64_x16)(X64 *x, X16 *r, size_t n, X64 iv);
-    void (*decode_rel_x64_x24)(X64 *x, X24 *r, size_t n, X64 iv);
-    void (*decode_rel_x64_x32)(X64 *x, X32 *r, size_t n, X64 iv);
-    void (*decode_rel_x64_x48)(X64 *x, X48 *r, size_t n, X64 iv);
-    zvec_stats<X64> (*scan_abs_x64)(X64 *x, size_t n);
-    zvec_stats<X64> (*scan_rel_x64)(X64 *x, size_t n);
-    zvec_stats<X64> (*scan_both_x64)(X64 *x, size_t n);
-    void (*synth_abs_x64)(X64 *x, size_t n, X64 iv);
-    void (*synth_rel_x64)(X64 *x, size_t n, X64 iv, X64 dv);
-    void (*synth_both_x64)(X64 *x, size_t n, X64 iv, X64 dv);
+    void (*encode_abs_x8)(T *x, X8 *r, size_t n);
+    void (*encode_abs_x16)(T *x, X16 *r, size_t n);
+    void (*encode_abs_x24)(T *x, X24 *r, size_t n);
+    void (*encode_abs_x32)(T *x, X32 *r, size_t n);
+    void (*encode_abs_x48)(T *x, X48 *r, size_t n);
+    void (*decode_abs_x8)(T *x, X8 *r, size_t n);
+    void (*decode_abs_x16)(T *x, X16 *r, size_t n);
+    void (*decode_abs_x24)(T *x, X24 *r, size_t n);
+    void (*decode_abs_x32)(T *x, X32 *r, size_t n);
+    void (*decode_abs_x48)(T *x, X48 *r, size_t n);
+    void (*encode_rel_x8)(T *x, X8 *r, size_t n, T iv);
+    void (*encode_rel_x16)(T *x, X16 *r, size_t n, T iv);
+    void (*encode_rel_x24)(T *x, X24 *r, size_t n, T iv);
+    void (*encode_rel_x32)(T *x, X32 *r, size_t n, T iv);
+    void (*encode_rel_x48)(T *x, X48 *r, size_t n, T iv);
+    void (*decode_rel_x8)(T *x, X8 *r, size_t n, T iv);
+    void (*decode_rel_x16)(T *x, X16 *r, size_t n, T iv);
+    void (*decode_rel_x24)(T *x, X24 *r, size_t n, T iv);
+    void (*decode_rel_x32)(T *x, X32 *r, size_t n, T iv);
+    void (*decode_rel_x48)(T *x, X48 *r, size_t n, T iv);
+    zvec_stats<T> (*scan_abs)(T *x, size_t n);
+    zvec_stats<T> (*scan_rel)(T *x, size_t n);
+    zvec_stats<T> (*scan_both)(T *x, size_t n);
+    void (*synth_abs)(T *x, size_t n, T iv);
+    void (*synth_rel)(T *x, size_t n, T iv, T dv);
+    void (*synth_both)(T *x, size_t n, T iv, T dv);
 };
 
-using zvec_op_types_i64 = zvec_op_types<i64,i48,i32,i24,i16,i8>;
-using zvec_op_types_u64 = zvec_op_types<u64,u48,u32,u24,u16,u8>;
+template<typename T, typename X24, typename X16, typename X8>
+struct zvec_op_types_32
+{
+    void (*encode_abs_x8)(T *x, X8 *r, size_t n);
+    void (*encode_abs_x16)(T *x, X16 *r, size_t n);
+    void (*encode_abs_x24)(T *x, X24 *r, size_t n);
+    void (*decode_abs_x8)(T *x, X8 *r, size_t n);
+    void (*decode_abs_x16)(T *x, X16 *r, size_t n);
+    void (*decode_abs_x24)(T *x, X24 *r, size_t n);
+    void (*encode_rel_x8)(T *x, X8 *r, size_t n, T iv);
+    void (*encode_rel_x16)(T *x, X16 *r, size_t n, T iv);
+    void (*encode_rel_x24)(T *x, X24 *r, size_t n, T iv);
+    void (*decode_rel_x8)(T *x, X8 *r, size_t n, T iv);
+    void (*decode_rel_x16)(T *x, X16 *r, size_t n, T iv);
+    void (*decode_rel_x24)(T *x, X24 *r, size_t n, T iv);
+    zvec_stats<T> (*scan_abs)(T *x, size_t n);
+    zvec_stats<T> (*scan_rel)(T *x, size_t n);
+    zvec_stats<T> (*scan_both)(T *x, size_t n);
+    void (*synth_abs)(T *x, size_t n, T iv);
+    void (*synth_rel)(T *x, size_t n, T iv, T dv);
+    void (*synth_both)(T *x, size_t n, T iv, T dv);
+};
+
+using zvec_op_types_i64 = zvec_op_types_64<i64,i48,i32,i24,i16,i8>;
+using zvec_op_types_u64 = zvec_op_types_64<u64,u48,u32,u24,u16,u8>;
+using zvec_op_types_i32 = zvec_op_types_32<i32,i24,i16,i8>;
+using zvec_op_types_u32 = zvec_op_types_32<u32,u24,u16,u8>;
 
 enum zvec_arch {
     zvec_arch_unspecified,
@@ -59,3 +84,5 @@ void zvec_set_override(zvec_arch arch);
 
 zvec_op_types_i64* get_zvec_ops_i64();
 zvec_op_types_u64* get_zvec_ops_u64();
+zvec_op_types_i32* get_zvec_ops_i32();
+zvec_op_types_u32* get_zvec_ops_u32();

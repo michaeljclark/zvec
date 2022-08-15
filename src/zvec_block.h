@@ -77,6 +77,26 @@ constexpr zvec_size zvec_size_abs(zvec_stats<u64> s)
     return zvec_size_64;
 }
 
+template <>
+constexpr zvec_size zvec_size_abs(zvec_stats<i32> s)
+{
+    if (s.amin == s.amax) return zvec_size_0;
+    if (s.amin >= -(1<<7) && s.amax <= ((1<<7)-1)) return zvec_size_8;
+    if (s.amin >= -(1<<15) && s.amax <= ((1<<15)-1)) return zvec_size_16;
+    if (s.amin >= -(1<<23) && s.amax <= ((1<<23)-1)) return zvec_size_24;
+    return zvec_size_32;
+}
+
+template <>
+constexpr zvec_size zvec_size_abs(zvec_stats<u32> s)
+{
+    if (s.amin == s.amax) return zvec_size_0;
+    if (s.amax <= ((1u<<8)-1)) return zvec_size_8;
+    if (s.amax <= ((1u<<16)-1)) return zvec_size_16;
+    if (s.amax <= ((1u<<24)-1)) return zvec_size_24;
+    return zvec_size_32;
+}
+
 template <typename T>
 constexpr zvec_size zvec_size_rel(zvec_stats<T> s)
 {
@@ -84,141 +104,246 @@ constexpr zvec_size zvec_size_rel(zvec_stats<T> s)
     if (s.dmin >= -(1<<7) && s.dmax <= ((1<<7)-1)) return zvec_size_8;
     if (s.dmin >= -(1<<15) && s.dmax <= ((1<<15)-1)) return zvec_size_16;
     if (s.dmin >= -(1<<23) && s.dmax <= ((1<<23)-1)) return zvec_size_24;
-    if (s.dmin >= -(1ll<<31) && s.dmax <= ((1ll<<31)-1)) return zvec_size_32;
-    if (s.dmin >= -(1ll<<47) && s.dmax <= ((1ll<<47)-1)) return zvec_size_48;
-    return zvec_size_64;
+    if constexpr (sizeof(T) == 8) {
+        if (s.dmin >= -(1ll<<31) && s.dmax <= ((1ll<<31)-1)) return zvec_size_32;
+        if (s.dmin >= -(1ll<<47) && s.dmax <= ((1ll<<47)-1)) return zvec_size_48;
+        return zvec_size_64;
+    }
+    if constexpr (sizeof(T) == 4) {
+        return zvec_size_32;
+    }
+    return zvec_size_0;
 }
 
 template <typename T>
 zvec_stats<T> zvec_block_scan_abs(T * __restrict x, size_t n)
 {
-    typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops_x64;
-    zvec_ops_x64 *ops = (std::is_signed<T>::value) ? (zvec_ops_x64*)get_zvec_ops_i64() : (zvec_ops_x64*)get_zvec_ops_u64();
-    return ops->scan_abs_x64(x, n);
+    if constexpr (sizeof(T) == 8) {
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i64() : (zvec_ops*)get_zvec_ops_u64();
+        return ops->scan_abs(x, n);
+    }
+    if constexpr (sizeof(T) == 4) {
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i32,zvec_op_types_u32>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i32() : (zvec_ops*)get_zvec_ops_u32();
+        return ops->scan_abs(x, n);
+    }
 }
 
 template <typename T>
 zvec_stats<T> zvec_block_scan_rel(T * __restrict x, size_t n)
 {
-    typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops_x64;
-    zvec_ops_x64 *ops = (std::is_signed<T>::value) ? (zvec_ops_x64*)get_zvec_ops_i64() : (zvec_ops_x64*)get_zvec_ops_u64();
-    return ops->scan_rel_x64(x, n);
+    if constexpr (sizeof(T) == 8) {
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i64() : (zvec_ops*)get_zvec_ops_u64();
+        return ops->scan_rel(x, n);
+    }
+    if constexpr (sizeof(T) == 4) {
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i32,zvec_op_types_u32>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i32() : (zvec_ops*)get_zvec_ops_u32();
+        return ops->scan_rel(x, n);
+    }
 }
 
 template <typename T>
 zvec_stats<T> zvec_block_scan_both(T * __restrict x, size_t n)
 {
-    typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops_x64;
-    zvec_ops_x64 *ops = (std::is_signed<T>::value) ? (zvec_ops_x64*)get_zvec_ops_i64() : (zvec_ops_x64*)get_zvec_ops_u64();
-    return ops->scan_both_x64(x, n);
+    if constexpr (sizeof(T) == 8) {
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i64() : (zvec_ops*)get_zvec_ops_u64();
+        return ops->scan_both(x, n);
+    }
+    if constexpr (sizeof(T) == 4) {
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i32,zvec_op_types_u32>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i32() : (zvec_ops*)get_zvec_ops_u32();
+        return ops->scan_both(x, n);
+    }
 }
 
 template <typename T>
 void zvec_block_synth_abs(T * __restrict x, size_t n, T iv)
 {
-    typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops_x64;
-    zvec_ops_x64 *ops = (std::is_signed<T>::value) ? (zvec_ops_x64*)get_zvec_ops_i64() : (zvec_ops_x64*)get_zvec_ops_u64();
-    ops->synth_abs_x64(x, n, iv);
+    if constexpr (sizeof(T) == 8) {
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i64() : (zvec_ops*)get_zvec_ops_u64();
+        ops->synth_abs(x, n, iv);
+    }
+    if constexpr (sizeof(T) == 4) {
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i32,zvec_op_types_u32>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i32() : (zvec_ops*)get_zvec_ops_u32();
+        ops->synth_abs(x, n, iv);
+    }
 }
 
 template <typename T>
 void zvec_block_synth_rel(T * __restrict x, size_t n, T iv, T dv)
 {
-    typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops_x64;
-    zvec_ops_x64 *ops = (std::is_signed<T>::value) ? (zvec_ops_x64*)get_zvec_ops_i64() : (zvec_ops_x64*)get_zvec_ops_u64();
-    ops->synth_rel_x64(x, n, iv, dv);
+    if constexpr (sizeof(T) == 8) {
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i64() : (zvec_ops*)get_zvec_ops_u64();
+        ops->synth_rel(x, n, iv, dv);
+    }
+    if constexpr (sizeof(T) == 4) {
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i32,zvec_op_types_u32>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i32() : (zvec_ops*)get_zvec_ops_u32();
+        ops->synth_rel(x, n, iv, dv);
+    }
 }
 
 template <typename T>
 void zvec_block_synth_both(T * __restrict x, size_t n, T iv, T dv)
 {
-    typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops_x64;
-    zvec_ops_x64 *ops = (std::is_signed<T>::value) ? (zvec_ops_x64*)get_zvec_ops_i64() : (zvec_ops_x64*)get_zvec_ops_u64();
-    ops->synth_both_x64(x, n, iv, dv);
+    if constexpr (sizeof(T) == 8) {
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i64() : (zvec_ops*)get_zvec_ops_u64();
+        ops->synth_both(x, n, iv, dv);
+    }
+    if constexpr (sizeof(T) == 4) {
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i32,zvec_op_types_u32>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i32() : (zvec_ops*)get_zvec_ops_u32();
+        ops->synth_both(x, n, iv, dv);
+    }
 }
 
 template <typename T>
 void zvec_block_encode_abs(T * __restrict in, void * __restrict comp, size_t n, zvec_size z)
 {
-    typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops_x64;
-    zvec_ops_x64 *ops = (std::is_signed<T>::value) ? (zvec_ops_x64*)get_zvec_ops_i64() : (zvec_ops_x64*)get_zvec_ops_u64();
-
-    typedef typename std::conditional<std::is_signed<T>::value,i8,u8>::type x8;
-    typedef typename std::conditional<std::is_signed<T>::value,i16,u16>::type x16;
-    typedef typename std::conditional<std::is_signed<T>::value,i24,u24>::type x24;
-    typedef typename std::conditional<std::is_signed<T>::value,i32,u32>::type x32;
-    typedef typename std::conditional<std::is_signed<T>::value,i48,u48>::type x48;
-    switch (z) {
-        case zvec_size_0: break;
-        case zvec_size_8: ops->encode_abs_x64_x8(in, (x8*)comp, n); break;
-        case zvec_size_16: ops->encode_abs_x64_x16(in, (x16*)comp, n); break;
-        case zvec_size_24: ops->encode_abs_x64_x24(in, (x24*)comp, n); break;
-        case zvec_size_32: ops->encode_abs_x64_x32(in, (x32*)comp, n); break;
-        case zvec_size_48: ops->encode_abs_x64_x48(in, (x48*)comp, n); break;
-        default: abort(); break;
+    if constexpr (sizeof(T) == 8) {
+        typedef typename std::conditional<std::is_signed<T>::value,i8,u8>::type x8;
+        typedef typename std::conditional<std::is_signed<T>::value,i16,u16>::type x16;
+        typedef typename std::conditional<std::is_signed<T>::value,i24,u24>::type x24;
+        typedef typename std::conditional<std::is_signed<T>::value,i32,u32>::type x32;
+        typedef typename std::conditional<std::is_signed<T>::value,i48,u48>::type x48;
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i64() : (zvec_ops*)get_zvec_ops_u64();
+        switch (z) {
+            case zvec_size_0: break;
+            case zvec_size_8: ops->encode_abs_x8(in, (x8*)comp, n); break;
+            case zvec_size_16: ops->encode_abs_x16(in, (x16*)comp, n); break;
+            case zvec_size_24: ops->encode_abs_x24(in, (x24*)comp, n); break;
+            case zvec_size_32: ops->encode_abs_x32(in, (x32*)comp, n); break;
+            case zvec_size_48: ops->encode_abs_x48(in, (x48*)comp, n); break;
+            default: abort(); break;
+        }
+    }
+    if constexpr (sizeof(T) == 4) {
+        typedef typename std::conditional<std::is_signed<T>::value,i8,u8>::type x8;
+        typedef typename std::conditional<std::is_signed<T>::value,i16,u16>::type x16;
+        typedef typename std::conditional<std::is_signed<T>::value,i24,u24>::type x24;
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i32,zvec_op_types_u32>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i32() : (zvec_ops*)get_zvec_ops_u32();
+        switch (z) {
+            case zvec_size_0: break;
+            case zvec_size_8: ops->encode_abs_x8(in, (x8*)comp, n); break;
+            case zvec_size_16: ops->encode_abs_x16(in, (x16*)comp, n); break;
+            case zvec_size_24: ops->encode_abs_x24(in, (x24*)comp, n); break;
+            default: abort(); break;
+        }
     }
 }
 
 template <typename T>
 void zvec_block_decode_abs(T * __restrict out, void * __restrict comp, size_t n, zvec_size z)
 {
-    typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops_x64;
-    zvec_ops_x64 *ops = (std::is_signed<T>::value) ? (zvec_ops_x64*)get_zvec_ops_i64() : (zvec_ops_x64*)get_zvec_ops_u64();
-
-    typedef typename std::conditional<std::is_signed<T>::value,i8,u8>::type x8;
-    typedef typename std::conditional<std::is_signed<T>::value,i16,u16>::type x16;
-    typedef typename std::conditional<std::is_signed<T>::value,i24,u24>::type x24;
-    typedef typename std::conditional<std::is_signed<T>::value,i32,u32>::type x32;
-    typedef typename std::conditional<std::is_signed<T>::value,i48,u48>::type x48;
-    switch (z) {
-        case zvec_size_8: ops->decode_abs_x64_x8(out, (x8*)comp, n); break;
-        case zvec_size_16: ops->decode_abs_x64_x16(out, (x16*)comp, n); break;
-        case zvec_size_24: ops->decode_abs_x64_x24(out, (x24*)comp, n); break;
-        case zvec_size_32: ops->decode_abs_x64_x32(out, (x32*)comp, n); break;
-        case zvec_size_48: ops->decode_abs_x64_x48(out, (x48*)comp, n); break;
-        default: abort(); break;
+    if constexpr (sizeof(T) == 8) {
+        typedef typename std::conditional<std::is_signed<T>::value,i8,u8>::type x8;
+        typedef typename std::conditional<std::is_signed<T>::value,i16,u16>::type x16;
+        typedef typename std::conditional<std::is_signed<T>::value,i24,u24>::type x24;
+        typedef typename std::conditional<std::is_signed<T>::value,i32,u32>::type x32;
+        typedef typename std::conditional<std::is_signed<T>::value,i48,u48>::type x48;
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i64() : (zvec_ops*)get_zvec_ops_u64();
+        switch (z) {
+            case zvec_size_8: ops->decode_abs_x8(out, (x8*)comp, n); break;
+            case zvec_size_16: ops->decode_abs_x16(out, (x16*)comp, n); break;
+            case zvec_size_24: ops->decode_abs_x24(out, (x24*)comp, n); break;
+            case zvec_size_32: ops->decode_abs_x32(out, (x32*)comp, n); break;
+            case zvec_size_48: ops->decode_abs_x48(out, (x48*)comp, n); break;
+            default: abort(); break;
+        }
+    }
+    if constexpr (sizeof(T) == 4) {
+        typedef typename std::conditional<std::is_signed<T>::value,i8,u8>::type x8;
+        typedef typename std::conditional<std::is_signed<T>::value,i16,u16>::type x16;
+        typedef typename std::conditional<std::is_signed<T>::value,i24,u24>::type x24;
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i32,zvec_op_types_u32>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i32() : (zvec_ops*)get_zvec_ops_u32();
+        switch (z) {
+            case zvec_size_8: ops->decode_abs_x8(out, (x8*)comp, n); break;
+            case zvec_size_16: ops->decode_abs_x16(out, (x16*)comp, n); break;
+            case zvec_size_24: ops->decode_abs_x24(out, (x24*)comp, n); break;
+            default: abort(); break;
+        }
     }
 }
 
 template <typename T>
 void zvec_block_encode_rel(T * __restrict in, void * __restrict comp, size_t n, zvec_size z, T iv)
 {
-    typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops_x64;
-    zvec_ops_x64 *ops = (std::is_signed<T>::value) ? (zvec_ops_x64*)get_zvec_ops_i64() : (zvec_ops_x64*)get_zvec_ops_u64();
-
-    typedef typename std::conditional<std::is_signed<T>::value,i8,u8>::type x8;
-    typedef typename std::conditional<std::is_signed<T>::value,i16,u16>::type x16;
-    typedef typename std::conditional<std::is_signed<T>::value,i24,u24>::type x24;
-    typedef typename std::conditional<std::is_signed<T>::value,i32,u32>::type x32;
-    typedef typename std::conditional<std::is_signed<T>::value,i48,u48>::type x48;
-    switch (z) {
-        case zvec_size_8: ops->encode_rel_x64_x8(in, (x8*)comp, n, iv); break;
-        case zvec_size_16: ops->encode_rel_x64_x16(in, (x16*)comp, n, iv); break;
-        case zvec_size_24: ops->encode_rel_x64_x24(in, (x24*)comp, n, iv); break;
-        case zvec_size_32: ops->encode_rel_x64_x32(in, (x32*)comp, n, iv); break;
-        case zvec_size_48: ops->encode_rel_x64_x48(in, (x48*)comp, n, iv); break;
-        default: abort(); break;
+    if constexpr (sizeof(T) == 8) {
+        typedef typename std::conditional<std::is_signed<T>::value,i8,u8>::type x8;
+        typedef typename std::conditional<std::is_signed<T>::value,i16,u16>::type x16;
+        typedef typename std::conditional<std::is_signed<T>::value,i24,u24>::type x24;
+        typedef typename std::conditional<std::is_signed<T>::value,i32,u32>::type x32;
+        typedef typename std::conditional<std::is_signed<T>::value,i48,u48>::type x48;
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i64() : (zvec_ops*)get_zvec_ops_u64();
+        switch (z) {
+            case zvec_size_8: ops->encode_rel_x8(in, (x8*)comp, n, iv); break;
+            case zvec_size_16: ops->encode_rel_x16(in, (x16*)comp, n, iv); break;
+            case zvec_size_24: ops->encode_rel_x24(in, (x24*)comp, n, iv); break;
+            case zvec_size_32: ops->encode_rel_x32(in, (x32*)comp, n, iv); break;
+            case zvec_size_48: ops->encode_rel_x48(in, (x48*)comp, n, iv); break;
+            default: abort(); break;
+        }
+    }
+    if constexpr (sizeof(T) == 4) {
+        typedef typename std::conditional<std::is_signed<T>::value,i8,u8>::type x8;
+        typedef typename std::conditional<std::is_signed<T>::value,i16,u16>::type x16;
+        typedef typename std::conditional<std::is_signed<T>::value,i24,u24>::type x24;
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i32,zvec_op_types_u32>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i32() : (zvec_ops*)get_zvec_ops_u32();
+        switch (z) {
+            case zvec_size_8: ops->encode_rel_x8(in, (x8*)comp, n, iv); break;
+            case zvec_size_16: ops->encode_rel_x16(in, (x16*)comp, n, iv); break;
+            case zvec_size_24: ops->encode_rel_x24(in, (x24*)comp, n, iv); break;
+            default: abort(); break;
+        }
     }
 }
 
 template <typename T>
 void zvec_block_decode_rel(T * __restrict out, void * __restrict comp, size_t n, zvec_size z, T iv)
 {
-    typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops_x64;
-    zvec_ops_x64 *ops = (std::is_signed<T>::value) ? (zvec_ops_x64*)get_zvec_ops_i64() : (zvec_ops_x64*)get_zvec_ops_u64();
-
-    typedef typename std::conditional<std::is_signed<T>::value,i8,u8>::type x8;
-    typedef typename std::conditional<std::is_signed<T>::value,i16,u16>::type x16;
-    typedef typename std::conditional<std::is_signed<T>::value,i24,u24>::type x24;
-    typedef typename std::conditional<std::is_signed<T>::value,i32,u32>::type x32;
-    typedef typename std::conditional<std::is_signed<T>::value,i48,u48>::type x48;
-    switch (z) {
-        case zvec_size_8: ops->decode_rel_x64_x8(out, (x8*)comp, n, iv); break;
-        case zvec_size_16: ops->decode_rel_x64_x16(out, (x16*)comp, n, iv); break;
-        case zvec_size_24: ops->decode_rel_x64_x24(out, (x24*)comp, n, iv); break;
-        case zvec_size_32: ops->decode_rel_x64_x32(out, (x32*)comp, n, iv); break;
-        case zvec_size_48: ops->decode_rel_x64_x48(out, (x48*)comp, n, iv); break;
-        default: abort(); break;
+    if constexpr (sizeof(T) == 8) {
+        typedef typename std::conditional<std::is_signed<T>::value,i8,u8>::type x8;
+        typedef typename std::conditional<std::is_signed<T>::value,i16,u16>::type x16;
+        typedef typename std::conditional<std::is_signed<T>::value,i24,u24>::type x24;
+        typedef typename std::conditional<std::is_signed<T>::value,i32,u32>::type x32;
+        typedef typename std::conditional<std::is_signed<T>::value,i48,u48>::type x48;
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i64,zvec_op_types_u64>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i64() : (zvec_ops*)get_zvec_ops_u64();
+        switch (z) {
+            case zvec_size_8: ops->decode_rel_x8(out, (x8*)comp, n, iv); break;
+            case zvec_size_16: ops->decode_rel_x16(out, (x16*)comp, n, iv); break;
+            case zvec_size_24: ops->decode_rel_x24(out, (x24*)comp, n, iv); break;
+            case zvec_size_32: ops->decode_rel_x32(out, (x32*)comp, n, iv); break;
+            case zvec_size_48: ops->decode_rel_x48(out, (x48*)comp, n, iv); break;
+            default: abort(); break;
+        }
+    }
+    if constexpr (sizeof(T) == 4) {
+        typedef typename std::conditional<std::is_signed<T>::value,i8,u8>::type x8;
+        typedef typename std::conditional<std::is_signed<T>::value,i16,u16>::type x16;
+        typedef typename std::conditional<std::is_signed<T>::value,i24,u24>::type x24;
+        typedef typename std::conditional<std::is_signed<T>::value,zvec_op_types_i32,zvec_op_types_u32>::type zvec_ops;
+        zvec_ops *ops = (std::is_signed<T>::value) ? (zvec_ops*)get_zvec_ops_i32() : (zvec_ops*)get_zvec_ops_u32();
+        switch (z) {
+            case zvec_size_8: ops->decode_rel_x8(out, (x8*)comp, n, iv); break;
+            case zvec_size_16: ops->decode_rel_x16(out, (x16*)comp, n, iv); break;
+            case zvec_size_24: ops->decode_rel_x24(out, (x24*)comp, n, iv); break;
+            default: abort(); break;
+        }
     }
 }
 

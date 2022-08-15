@@ -364,29 +364,44 @@ void ZVEC_ARCH_FN1(zvec_ll_block_encode_abs)(T * __restrict x, S * __restrict r,
     using x32 = typename std::conditional<std::is_signed<T>::value,i32,u32>::type;
 
     const ScalableTag<T> d;
+    const RebindToUnsigned<decltype(d)> du;
     const ScalableTag<x32> w;
     const ScalableTag<u32> wu;
     const Rebind<S, decltype(d)> dw;
     const RebindToUnsigned<decltype(dw)> dwu;
 
-    const size_t L = Lanes(d);
-    const size_t K = Lanes(w);
+    if constexpr (sizeof(T) == 8)
+    {
+        const size_t L = Lanes(d);
+        const size_t K = Lanes(w);
 
-    alignas(64) i32 idx_demote[K];
-    for (size_t i = 0; i < K; i++) {
-        idx_demote[i] = i % L * (K/L); /* little-endian dword-0 */
+        alignas(64) i32 idx_demote[K];
+        for (size_t i = 0; i < K; i++) {
+            idx_demote[i] = i % L * (K/L); /* little-endian dword-0 */
+        }
+        const auto shuf_demote = SetTableIndices(w, idx_demote);
+
+        Vec<decltype(d)> v1;
+        Vec<decltype(w)> v2;
+        for (size_t i = 0; i < N; i += L) {
+            v1 = Load(d, x+i);
+            v2 = TableLookupLanes(BitCast(w, v1), shuf_demote);
+            if constexpr (sizeof(S) == 4) {
+                Store(LowerHalf(v2), dw, r+i);
+            } else {
+                Store(BitCast(dw, TruncateTo(dwu, LowerHalf(BitCast(wu, v2)))), dw, r+i);
+            }
+        }
     }
-    const auto shuf_demote = SetTableIndices(w, idx_demote);
+    if constexpr (sizeof(T) == 4)
+    {
+        const size_t L = Lanes(d);
 
-    Vec<decltype(d)> v1;
-    Vec<decltype(w)> v2;
-    for (size_t i = 0; i < N; i += L) {
-        v1 = Load(d, x+i);
-        v2 = TableLookupLanes(BitCast(w, v1), shuf_demote);
-        if constexpr (sizeof(S) == 4) {
-            Store(LowerHalf(v2), dw, r+i);
-        } else {
-            Store(BitCast(dw, TruncateTo(dwu, LowerHalf(BitCast(wu, v2)))), dw, r+i);
+        Vec<decltype(d)> v1;
+        Vec<decltype(dw)> v2;
+        for (size_t i = 0; i < N; i += L) {
+            v1 = Load(d, x+i);
+            Store(BitCast(dw, TruncateTo(dwu, BitCast(du, v1))), dw, r+i);
         }
     }
 }
@@ -416,33 +431,51 @@ void ZVEC_ARCH_FN1(zvec_ll_block_encode_rel)(T * __restrict x, S * __restrict r,
     using x32 = typename std::conditional<std::is_signed<T>::value,i32,u32>::type;
 
     const ScalableTag<T> d;
+    const RebindToUnsigned<decltype(d)> du;
     const ScalableTag<x32> w;
     const ScalableTag<u32> wu;
     const Rebind<S, decltype(d)> dw;
     const RebindToUnsigned<decltype(dw)> dwu;
 
-    const size_t L = Lanes(d);
-    const size_t K = Lanes(w);
+    if constexpr (sizeof(T) == 8)
+    {
+        const size_t L = Lanes(d);
+        const size_t K = Lanes(w);
 
-    alignas(64) i32 idx_demote[K];
-    for (size_t i = 0; i < K; i++) {
-        idx_demote[i] = i % L * (K/L); /* little-endian dword-0 */
+        alignas(64) i32 idx_demote[K];
+        for (size_t i = 0; i < K; i++) {
+            idx_demote[i] = i % L * (K/L); /* little-endian dword-0 */
+        }
+        const auto shuf_demote = SetTableIndices(w, idx_demote);
+
+        Vec<decltype(d)> v0 = Set(d, iv);
+        Vec<decltype(d)> v1, v2, v3;
+        Vec<decltype(w)> v4;
+        for (size_t i = 0; i < N; i += L) {
+            v1 = Load(d, x+i);
+            v2 = CombineShiftRightLanes<HWY_LANES(T)-1>(d, v1, v0);
+            v3 = Sub(v1, v2);
+            v0 = v1;
+            v4 = TableLookupLanes(BitCast(w, v3), shuf_demote);
+            if constexpr (sizeof(S) == 4) {
+                Store(LowerHalf(v4), dw, r+i);
+            } else {
+                Store(BitCast(dw, TruncateTo(dwu, LowerHalf(BitCast(wu, v4)))), dw, r+i);
+            }
+        }
     }
-    const auto shuf_demote = SetTableIndices(w, idx_demote);
+    if constexpr (sizeof(T) == 4)
+    {
+        const size_t L = Lanes(d);
 
-    Vec<decltype(d)> v0 = Set(d, iv);
-    Vec<decltype(d)> v1, v2, v3;
-    Vec<decltype(w)> v4;
-    for (size_t i = 0; i < N; i += L) {
-    	v1 = Load(d, x+i);
-        v2 = CombineShiftRightLanes<HWY_LANES(T)-1>(d, v1, v0);
-        v3 = Sub(v1, v2);
-        v0 = v1;
-        v4 = TableLookupLanes(BitCast(w, v3), shuf_demote);
-        if constexpr (sizeof(S) == 4) {
-            Store(LowerHalf(v4), dw, r+i);
-        } else {
-            Store(BitCast(dw, TruncateTo(dwu, LowerHalf(BitCast(wu, v4)))), dw, r+i);
+        Vec<decltype(d)> v0 = Set(d, iv);
+        Vec<decltype(d)> v1, v2, v3;
+        for (size_t i = 0; i < N; i += L) {
+            v1 = Load(d, x+i);
+            v2 = CombineShiftRightLanes<HWY_LANES(T)-1>(d, v1, v0);
+            v3 = Sub(v1, v2);
+            v0 = v1;
+            Store(BitCast(dw, TruncateTo(dwu, BitCast(du, v3))), dw, r+i);
         }
     }
 }
@@ -526,11 +559,20 @@ void ZVEC_ARCH_FN2(zvec_ll_block_decode,x24)(T * __restrict x, typename std::con
         s2 = ((r1 >> 16) & 0xffff) | ((r2 & 0xff) << 16);
         s3 =  (r2 >> 8);
 
-        if (std::is_signed<T>::value) {
+        if constexpr (std::is_signed<T>::value && sizeof(T) == 8)
+        {
             s0 = (s0 << 40) >> 40;
             s1 = (s1 << 40) >> 40;
             s2 = (s2 << 40) >> 40;
             s3 = (s3 << 40) >> 40;
+        }
+
+        if constexpr (std::is_signed<T>::value && sizeof(T) == 4)
+        {
+            s0 = (s0 << 8) >> 8;
+            s1 = (s1 << 8) >> 8;
+            s2 = (s2 << 8) >> 8;
+            s3 = (s3 << 8) >> 8;
         }
 
         if constexpr (codec == zvec_block_rel)
@@ -603,7 +645,8 @@ void ZVEC_ARCH_FN2(zvec_ll_block_decode,x48)(T * __restrict x, typename std::con
         s2 = ((r1 >> 32) & 0xffffffffull) | ((r2 & 0xffffull) << 32);
         s3 =  (r2 >> 16);
 
-        if (std::is_signed<T>::value) {
+        if constexpr (std::is_signed<T>::value && sizeof(T) == 8)
+        {
             s0 = (s0 << 16) >> 16;
             s1 = (s1 << 16) >> 16;
             s2 = (s2 << 16) >> 16;
@@ -632,258 +675,498 @@ void ZVEC_ARCH_FN2(zvec_ll_block_decode,x48)(T * __restrict x, typename std::con
 template<zvec_codec codec, typename T>
 void ZVEC_ARCH_FN2(zvec_ll_block_encode,x24)(T * __restrict x, typename std::conditional<std::is_signed<T>::value,i24,u24>::type * __restrict r, size_t N, i64 iv)
 {
-    const ScalableTag<T> d;
-    const ScalableTag<i32> w;
-    const ScalableTag<i8> b;
-    const Rebind<i32, decltype(d)> dw;
-    const Repartition<i8, decltype(dw)> db;
+    if constexpr (sizeof(T) == 8)
+    {
+        const ScalableTag<T> d;
+        const ScalableTag<i32> w;
+        const ScalableTag<i8> b;
+        const Rebind<i32, decltype(d)> dw;
+        const Repartition<i8, decltype(dw)> db;
 
-    const size_t L = Lanes(d);
-    const size_t K = Lanes(w);
-    const size_t W = Lanes(dw);
-    const size_t V = Lanes(db);
+        const size_t L = Lanes(d);
+        const size_t K = Lanes(w);
+        const size_t W = Lanes(dw);
+        const size_t V = Lanes(db);
 
-    alignas(64) i32 idx_demote[K];
-    alignas(64) i8 idx_enc[V];
-    alignas(64) i8 idx_mask[V];
-    Vec<decltype(db)> shuf_enc;
-    Mask<decltype(db)> shuf_mask;
+        alignas(64) i32 idx_demote[K];
+        alignas(64) i8 idx_enc[V];
+        alignas(64) i8 idx_mask[V];
+        Vec<decltype(db)> shuf_enc;
+        Mask<decltype(db)> shuf_mask;
 
-    for (size_t i = 0; i < K; i++) {
-        idx_demote[i] = i % L * (K/L); /* little-endian dword-0 */
-    }
-    const auto shuf_demote = SetTableIndices(w, idx_demote);
+        for (size_t i = 0; i < K; i++) {
+            idx_demote[i] = i % L * (K/L); /* little-endian dword-0 */
+        }
+        const auto shuf_demote = SetTableIndices(w, idx_demote);
 
-    for (size_t i = 0; i < V; i++) {
-        i8 x = (i % 3) + (i / 3) * 4;
-        idx_enc[i] = x < V ? x : -1;
-    }
-    shuf_enc = Load(db, idx_enc);
-
-    if constexpr (HWY_LANES(i8) > 16) {
         for (size_t i = 0; i < V; i++) {
             i8 x = (i % 3) + (i / 3) * 4;
-            idx_mask[i] = (x / 16) == (i / 16) ? -1 : 0;
+            idx_enc[i] = x < V ? x : -1;
         }
-        shuf_mask = MaskFromVec(Load(db, idx_mask));
+        shuf_enc = Load(db, idx_enc);
+
+        if constexpr (HWY_LANES(i8) > 16) {
+            for (size_t i = 0; i < V; i++) {
+                i8 x = (i % 3) + (i / 3) * 4;
+                idx_mask[i] = (x / 16) == (i / 16) ? -1 : 0;
+            }
+            shuf_mask = MaskFromVec(Load(db, idx_mask));
+        }
+
+        auto delta = [&] (size_t i, Vec<decltype(d)> v0) -> std::tuple<Vec<decltype(d)>,Vec<decltype(d)>> {
+            auto v1 = Load(d, x+i);
+            auto v2 = CombineShiftRightLanes<HWY_LANES(i64)-1>(d, v1, v0);
+            auto v3 = Sub(v1, v2);
+            return std::tie(v1, v3);
+        };
+
+        auto convert24 = [&] (Vec<decltype(d)> v) -> Vec<decltype(w)>
+        {
+            Vec<decltype(dw)> t = LowerHalf(TableLookupLanes(BitCast(w, v), shuf_demote));
+            if constexpr (HWY_LANES(i8) > 16) {
+                Vec<decltype(dw)> u = CombineShiftRightLanes<4>(dw, Zero(dw), t);
+                return ZeroExtendVector(w, BitCast(dw, IfThenElse(shuf_mask,
+                    TableLookupBytes(BitCast(db, t), shuf_enc),
+                    TableLookupBytes(BitCast(db, u), shuf_enc))));
+            } else if constexpr (HWY_LANES(i8) == 16) {
+                return ZeroExtendVector(w, BitCast(dw,
+                    TableLookupBytes(BitCast(db, t), shuf_enc)));
+            }
+        };
+
+        Vec<decltype(d)> v0 = Set(d, iv);
+        Vec<decltype(w)> w0, w1, w2, w3;
+        Vec<decltype(w)> r0, r1, r2, r3;
+        for (size_t i = 0, j = 0; i < N; i += L * 4, j+= L * 3)
+        {
+            if constexpr (codec == zvec_block_rel)
+            {
+                auto d0 = delta(i + L * 0, v0);
+                auto d1 = delta(i + L * 1, std::get<0>(d0));
+                auto d2 = delta(i + L * 2, std::get<0>(d1));
+                auto d3 = delta(i + L * 3, std::get<0>(d2));
+
+                v0 = std::get<0>(d3);
+
+                w0 = convert24(std::get<1>(d0));
+                w1 = convert24(std::get<1>(d1));
+                w2 = convert24(std::get<1>(d2));
+                w3 = convert24(std::get<1>(d3));
+            }
+            else
+            {
+                w0 = convert24(Load(d, x + i + L * 0));
+                w1 = convert24(Load(d, x + i + L * 1));
+                w2 = convert24(Load(d, x + i + L * 2));
+                w3 = convert24(Load(d, x + i + L * 3));
+            }
+
+            if constexpr (HWY_LANES(i8) == 64)
+            {
+                r0 = IfThenElse(FirstN(w, 6),
+                    BitCast(w, w0),
+                    CombineShiftRightLanes<HWY_LANES(i32)-6>(w, BitCast(w, w1), Zero(w)));
+                r1 = IfThenElse(FirstN(w, 4),
+                    CombineShiftRightLanes<2>(w, Zero(w), BitCast(w, w1)),
+                    CombineShiftRightLanes<HWY_LANES(i32)-4>(w, BitCast(w, w2), Zero(w)));
+                r2 = IfThenElse(FirstN(w, 2),
+                    CombineShiftRightLanes<4>(w, Zero(w), BitCast(w, w2)),
+                    CombineShiftRightLanes<HWY_LANES(i32)-2>(w, BitCast(w, w3), Zero(w)));
+            }
+            else if constexpr (HWY_LANES(i8) == 16)
+            {
+                r0 = BitCast(w, IfThenElse(FirstN(b, 6),
+                    BitCast(b, w0),
+                    CombineShiftRightBytes<HWY_LANES(i8)-6>(b, BitCast(b, w1), Zero(b))));
+                r1 = BitCast(w, IfThenElse(FirstN(b, 4),
+                    CombineShiftRightBytes<2>(b, Zero(b), BitCast(b, w1)),
+                    CombineShiftRightBytes<HWY_LANES(i8)-4>(b, BitCast(b, w2), Zero(b))));
+                r2 = BitCast(w, IfThenElse(FirstN(b, 2),
+                    CombineShiftRightBytes<4>(b, Zero(b), BitCast(b, w2)),
+                    CombineShiftRightBytes<HWY_LANES(i8)-2>(b, BitCast(b, w3), Zero(b))));
+            }
+
+            Store(LowerHalf(r0), dw, (i32*)r + j + L * 0);
+            Store(LowerHalf(r1), dw, (i32*)r + j + L * 1);
+            Store(LowerHalf(r2), dw, (i32*)r + j + L * 2);
+        }
     }
-
-    auto delta = [&] (size_t i, Vec<decltype(d)> v0) -> std::tuple<Vec<decltype(d)>,Vec<decltype(dw)>> {
-        auto v1 = Load(d, x+i);
-        auto v2 = CombineShiftRightLanes<HWY_LANES(i64)-1>(d, v1, v0);
-        auto v3 = Sub(v1, v2);
-        auto v4 = LowerHalf(TableLookupLanes(BitCast(w, v3), shuf_demote));
-        return std::tie(v1, v4);
-    };
-
-    auto demote = [&] (Vec<decltype(d)> v0) -> Vec<decltype(dw)> {
-        return LowerHalf(TableLookupLanes(BitCast(w, v0), shuf_demote));
-    };
-
-    auto convert24 = [&] (Vec<decltype(dw)> v) -> Vec<decltype(w)>
+    if constexpr (sizeof(T) == 4)
     {
-        if constexpr (HWY_LANES(i8) == 64) {
-            Vec<decltype(dw)> u = CombineShiftRightLanes<4>(dw, Zero(dw), v);
-            return ZeroExtendVector(w, BitCast(dw, IfThenElse(shuf_mask,
-                TableLookupBytes(BitCast(db, v), shuf_enc),
-                TableLookupBytes(BitCast(db, u), shuf_enc))));
-        } else if constexpr (HWY_LANES(i8) == 16) {
-            return ZeroExtendVector(w, BitCast(dw, TableLookupBytes(BitCast(db, v), shuf_enc)));
-        }
-    };
+        const ScalableTag<T> d;
+        const ScalableTag<i32> w;
+        const ScalableTag<i8> b;
+        const Repartition<i8, decltype(d)> db;
 
-    Vec<decltype(d)> v0 = Set(d, iv);
-    Vec<decltype(w)> w0, w1, w2, w3;
-    Vec<decltype(w)> r0, r1, r2, r3;
-    for (size_t i = 0, j = 0; i < N; i += L * 4, j+= L * 3)
-    {
-        if constexpr (codec == zvec_block_rel)
+        const size_t L = Lanes(d);
+        const size_t V = Lanes(db);
+
+        alignas(64) i8 idx_enc[V];
+        alignas(64) i8 idx_mask[V];
+        Vec<decltype(db)> shuf_enc;
+        Mask<decltype(db)> shuf_mask;
+
+        for (size_t i = 0; i < V; i++) {
+            i8 x = (i % 3) + (i / 3) * 4;
+            idx_enc[i] = x < V ? x : -1;
+        }
+        shuf_enc = Load(db, idx_enc);
+
+        if constexpr (HWY_LANES(i8) > 16) {
+            for (size_t i = 0; i < V; i++) {
+                i8 x = (i % 3) + (i / 3) * 4;
+                idx_mask[i] = (x / 16) == (i / 16) ? -1 : 0;
+            }
+            shuf_mask = MaskFromVec(Load(db, idx_mask));
+        }
+
+        auto delta = [&] (size_t i, Vec<decltype(d)> v0) -> std::tuple<Vec<decltype(d)>,Vec<decltype(d)>> {
+            auto v1 = Load(d, x+i);
+            auto v2 = CombineShiftRightLanes<HWY_LANES(i32)-1>(d, v1, v0);
+            auto v3 = Sub(v1, v2);
+            return std::tie(v1, v3);
+        };
+
+        auto convert24 = [&] (Vec<decltype(d)> v) -> Vec<decltype(d)>
         {
-            auto d0 = delta(i + L * 0, v0);
-            auto d1 = delta(i + L * 1, std::get<0>(d0));
-            auto d2 = delta(i + L * 2, std::get<0>(d1));
-            auto d3 = delta(i + L * 3, std::get<0>(d2));
+            if constexpr (HWY_LANES(i8) > 16) {
+                Vec<decltype(d)> u = CombineShiftRightLanes<4>(d, Zero(d), v);
+                return BitCast(d, IfThenElse(shuf_mask,
+                    TableLookupBytes(BitCast(db, v), shuf_enc),
+                    TableLookupBytes(BitCast(db, u), shuf_enc)));
+            } else if constexpr (HWY_LANES(i8) == 16) {
+                return BitCast(d,
+                    TableLookupBytes(BitCast(db, v), shuf_enc));
+            }
+        };
 
-            v0 = std::get<0>(d3);
-
-            w0 = convert24(std::get<1>(d0));
-            w1 = convert24(std::get<1>(d1));
-            w2 = convert24(std::get<1>(d2));
-            w3 = convert24(std::get<1>(d3));
-        }
-        else
+        Vec<decltype(d)> v0 = Set(d, iv);
+        Vec<decltype(d)> w0, w1, w2, w3;
+        Vec<decltype(d)> r0, r1, r2, r3;
+        for (size_t i = 0, j = 0; i < N; i += L * 4, j+= L * 3)
         {
-            w0 = convert24(demote(Load(d, x + i + L * 0)));
-            w1 = convert24(demote(Load(d, x + i + L * 1)));
-            w2 = convert24(demote(Load(d, x + i + L * 2)));
-            w3 = convert24(demote(Load(d, x + i + L * 3)));
-        }
+            if constexpr (codec == zvec_block_rel)
+            {
+                auto d0 = delta(i + L * 0, v0);
+                auto d1 = delta(i + L * 1, std::get<0>(d0));
+                auto d2 = delta(i + L * 2, std::get<0>(d1));
+                auto d3 = delta(i + L * 3, std::get<0>(d2));
 
-        if constexpr (HWY_LANES(i8) == 64)
-        {
-            r0 = IfThenElse(FirstN(w, 6),
-                BitCast(w, w0),
-                CombineShiftRightLanes<HWY_LANES(i32)-6>(w, BitCast(w, w1), Zero(w)));
-            r1 = IfThenElse(FirstN(w, 4),
-                CombineShiftRightLanes<2>(w, Zero(w), BitCast(w, w1)),
-                CombineShiftRightLanes<HWY_LANES(i32)-4>(w, BitCast(w, w2), Zero(w)));
-            r2 = IfThenElse(FirstN(w, 2),
-                CombineShiftRightLanes<4>(w, Zero(w), BitCast(w, w2)),
-                CombineShiftRightLanes<HWY_LANES(i32)-2>(w, BitCast(w, w3), Zero(w)));
-        }
-        else if constexpr (HWY_LANES(i8) == 16)
-        {
-            r0 = BitCast(w, IfThenElse(FirstN(b, 6),
-                BitCast(b, w0),
-                CombineShiftRightBytes<HWY_LANES(i8)-6>(b, BitCast(b, w1), Zero(b))));
-            r1 = BitCast(w, IfThenElse(FirstN(b, 4),
-                CombineShiftRightBytes<2>(b, Zero(b), BitCast(b, w1)),
-                CombineShiftRightBytes<HWY_LANES(i8)-4>(b, BitCast(b, w2), Zero(b))));
-            r2 = BitCast(w, IfThenElse(FirstN(b, 2),
-                CombineShiftRightBytes<4>(b, Zero(b), BitCast(b, w2)),
-                CombineShiftRightBytes<HWY_LANES(i8)-2>(b, BitCast(b, w3), Zero(b))));
-        }
+                v0 = std::get<0>(d3);
 
-        Store(LowerHalf(r0), dw, (i32*)r + j + L * 0);
-        Store(LowerHalf(r1), dw, (i32*)r + j + L * 1);
-        Store(LowerHalf(r2), dw, (i32*)r + j + L * 2);
+                w0 = convert24(std::get<1>(d0));
+                w1 = convert24(std::get<1>(d1));
+                w2 = convert24(std::get<1>(d2));
+                w3 = convert24(std::get<1>(d3));
+            }
+            else
+            {
+                w0 = convert24(Load(d, x + i + L * 0));
+                w1 = convert24(Load(d, x + i + L * 1));
+                w2 = convert24(Load(d, x + i + L * 2));
+                w3 = convert24(Load(d, x + i + L * 3));
+            }
+
+            if constexpr (HWY_LANES(i8) == 64)
+            {
+                r0 = BitCast(d, IfThenElse(FirstN(w, 12),
+                    BitCast(w, w0),
+                    CombineShiftRightLanes<HWY_LANES(i32)-12>(w, BitCast(w, w1), Zero(w))));
+                r1 = BitCast(d, IfThenElse(FirstN(w, 8),
+                    CombineShiftRightLanes<4>(w, Zero(w), BitCast(w, w1)),
+                    CombineShiftRightLanes<HWY_LANES(i32)-8>(w, BitCast(w, w2), Zero(w))));
+                r2 = BitCast(d, IfThenElse(FirstN(w, 4),
+                    CombineShiftRightLanes<8>(w, Zero(w), BitCast(w, w2)),
+                    CombineShiftRightLanes<HWY_LANES(i32)-4>(w, BitCast(w, w3), Zero(w))));
+            }
+            else if constexpr (HWY_LANES(i8) == 16)
+            {
+                r0 = BitCast(d, IfThenElse(FirstN(b, 12),
+                    BitCast(b, w0),
+                    CombineShiftRightBytes<HWY_LANES(i8)-12>(b, BitCast(b, w1), Zero(b))));
+                r1 = BitCast(d, IfThenElse(FirstN(b, 8),
+                    CombineShiftRightBytes<4>(b, Zero(b), BitCast(b, w1)),
+                    CombineShiftRightBytes<HWY_LANES(i8)-8>(b, BitCast(b, w2), Zero(b))));
+                r2 = BitCast(d, IfThenElse(FirstN(b, 4),
+                    CombineShiftRightBytes<8>(b, Zero(b), BitCast(b, w2)),
+                    CombineShiftRightBytes<HWY_LANES(i8)-4>(b, BitCast(b, w3), Zero(b))));
+            }
+
+            Store(r0, d, (T*)r + j + L * 0);
+            Store(r1, d, (T*)r + j + L * 1);
+            Store(r2, d, (T*)r + j + L * 2);
+        }
     }
 }
 
 template<zvec_codec codec, typename T>
 void ZVEC_ARCH_FN2(zvec_ll_block_decode,x24)(T * __restrict x, typename std::conditional<std::is_signed<T>::value,i24,u24>::type * __restrict r, size_t N, i64 iv)
 {
-    using S = typename std::conditional<std::is_signed<T>::value,i24,u24>::type;
-    using x32 = typename std::conditional<std::is_signed<T>::value,i32,u32>::type;
+    if constexpr (sizeof(T) == 8)
+    {
+        using S = typename std::conditional<std::is_signed<T>::value,i24,u24>::type;
+        using x32 = typename std::conditional<std::is_signed<T>::value,i32,u32>::type;
 
-    const ScalableTag<T> d;
-    const ScalableTag<x32> w;
-    const ScalableTag<i8> b;
-    const Rebind<x32, decltype(d)> dw;
-    const RebindToSigned<decltype(dw)> dws;
-    const Repartition<i8, decltype(dw)> db;
+        const ScalableTag<T> d;
+        const ScalableTag<x32> w;
+        const ScalableTag<i8> b;
+        const Rebind<x32, decltype(d)> dw;
+        const RebindToSigned<decltype(dw)> dws;
+        const Repartition<i8, decltype(dw)> db;
 
-    const size_t L = Lanes(d);
-    const size_t W = Lanes(dw);
-    const size_t V = Lanes(db);
+        const size_t L = Lanes(d);
+        const size_t V = Lanes(db);
 
-    alignas(64) i8 idx_dec[V];
-    alignas(64) i8 idx_mask[V];
-    Vec<decltype(db)> shuf_dec;
-    Mask<decltype(db)> shuf_mask;
+        alignas(64) i8 idx_dec[V];
+        alignas(64) i8 idx_mask[V];
+        Vec<decltype(db)> shuf_dec;
+        Mask<decltype(db)> shuf_mask;
 
-    const auto shuf_last = IndicesFromVec(d, Set(d, L - 1));
+        const auto shuf_last = IndicesFromVec(d, Set(d, L - 1));
 
-    for (size_t i = 0; i < V; i++) {
-        i8 x = (i % 4) + (i / 4) * 3;
-        idx_dec[(i+1)&(V-1)] = (i % 4) < 3 ? x : -1;
-    }
-    shuf_dec = Load(db, idx_dec);
-
-    if constexpr (HWY_LANES(i8) == 64) {
         for (size_t i = 0; i < V; i++) {
             i8 x = (i % 4) + (i / 4) * 3;
-            if (std::is_signed<T>::value || codec == zvec_block_rel) {
-                idx_mask[(i+1)&(V-1)] = (x / 16) == (i / 16) ? -1 : 0;
-            } else {
-                idx_mask[i] = (x / 16) == (i / 16) ? -1 : 0;
-            }
+            idx_dec[(i+1)&(V-1)] = (i % 4) < 3 ? x : -1;
         }
-        shuf_mask = MaskFromVec(Load(db, idx_mask));
+        shuf_dec = Load(db, idx_dec);
+
+        if constexpr (HWY_LANES(i8) > 16) {
+            for (size_t i = 0; i < V; i++) {
+                i8 x = (i % 4) + (i / 4) * 3;
+                if (std::is_signed<T>::value || codec == zvec_block_rel) {
+                    idx_mask[(i+1)&(V-1)] = (x / 16) == (i / 16) ? -1 : 0;
+                } else {
+                    idx_mask[i] = (x / 16) == (i / 16) ? -1 : 0;
+                }
+            }
+            shuf_mask = MaskFromVec(Load(db, idx_mask));
+        }
+
+        auto convert24 = [&] (Vec<decltype(dw)> v) -> Vec<decltype(dw)>
+        {
+            if constexpr (std::is_signed<T>::value || codec == zvec_block_rel)
+            {
+                if constexpr (HWY_LANES(i8) > 16) {
+                    Vec<decltype(dw)> u = CombineShiftRightLanes<HWY_LANES(i32)-4>(dw, v, Zero(dw));
+                    return BitCast(dw, ShiftRight<8>(BitCast(dws, IfThenElse(shuf_mask,
+                        TableLookupBytes(BitCast(db, v), shuf_dec),
+                        TableLookupBytes(BitCast(db, u), shuf_dec)))));
+                } else if constexpr (HWY_LANES(i8) == 16) {
+                    return BitCast(dw, ShiftRight<8>(BitCast(dws,
+                        TableLookupBytes(BitCast(db, v), shuf_dec))));
+                }
+            }
+            else
+            {
+                if constexpr (HWY_LANES(i8) > 16) {
+                    Vec<decltype(dw)> u = CombineShiftRightLanes<HWY_LANES(i32)-4>(dw, v, Zero(dw));
+                    return BitCast(dw, IfThenElse(shuf_mask,
+                        TableLookupBytes(BitCast(db, v), shuf_dec),
+                        TableLookupBytes(BitCast(db, u), shuf_dec)));
+                } else if constexpr (HWY_LANES(i8) == 16) {
+                    return BitCast(dw,
+                        TableLookupBytes(BitCast(db, v), shuf_dec));
+                }
+            }
+        };
+
+        Vec<decltype(d)> v0 = Set(d, iv);
+        Vec<decltype(w)> r0, r1, r2;
+        Vec<decltype(w)> w0, w1, w2, w3;
+        Vec<decltype(d)> d0, d1, d2, d3;
+        Vec<decltype(d)> s0, s1, s2, s3;
+        for (size_t i = 0, j = 0; i < N; i += L * 4, j+= L * 3)
+        {
+            r0 = ZeroExtendVector(w, Load(dw, (x32*)r + j + L * 0));
+            r1 = ZeroExtendVector(w, Load(dw, (x32*)r + j + L * 1));
+            r2 = ZeroExtendVector(w, Load(dw, (x32*)r + j + L * 2));
+
+            if constexpr (HWY_LANES(i8) == 64)
+            {
+                w0 = r0;
+                w1 = BitCast(w, IfThenElse(FirstN(w, 2),
+                    CombineShiftRightLanes<6>(w, Zero(w), BitCast(w, r0)),
+                    CombineShiftRightLanes<HWY_LANES(i32)-2>(w, BitCast(w, r1), Zero(w))));
+                w2 = BitCast(w, IfThenElse(FirstN(w, 4),
+                    CombineShiftRightLanes<4>(w, Zero(w), BitCast(w, r1)),
+                    CombineShiftRightLanes<HWY_LANES(i32)-4>(w, BitCast(w, r2), Zero(w))));
+                w3 = BitCast(w, CombineShiftRightLanes<2>(w, Zero(w), BitCast(w, r2)));
+            }
+            else if constexpr (HWY_LANES(i8) == 16)
+            {
+                w0 = r0;
+                w1 = BitCast(w, IfThenElse(FirstN(b, 2),
+                    CombineShiftRightBytes<6>(b, Zero(b), BitCast(b, r0)),
+                    CombineShiftRightBytes<HWY_LANES(i8)-2>(b, BitCast(b, r1), Zero(b))));
+                w2 = BitCast(w, IfThenElse(FirstN(b, 4),
+                    CombineShiftRightBytes<4>(b, Zero(b), BitCast(b, r1)),
+                    CombineShiftRightBytes<HWY_LANES(i8)-4>(b, BitCast(b, r2), Zero(b))));
+                w3 = BitCast(w, CombineShiftRightBytes<2>(b, Zero(b), BitCast(b, r2)));
+            }
+
+            d0 = PromoteTo(d, convert24(LowerHalf(dw, w0)));
+            d1 = PromoteTo(d, convert24(LowerHalf(dw, w1)));
+            d2 = PromoteTo(d, convert24(LowerHalf(dw, w2)));
+            d3 = PromoteTo(d, convert24(LowerHalf(dw, w3)));
+
+            s0 = d0;
+            s1 = d1;
+            s2 = d2;
+            s3 = d3;
+
+            if (codec == zvec_block_rel)
+            {
+                constexpr_for<0, ilog2(HWY_LANES(T)), 1>([&](auto j){
+                    s0 = s0 + CombineShiftRightLanes<HWY_LANES(T)-(1 << j)>(d, s0, Zero(d));
+                    s1 = s1 + CombineShiftRightLanes<HWY_LANES(T)-(1 << j)>(d, s1, Zero(d));
+                    s2 = s2 + CombineShiftRightLanes<HWY_LANES(T)-(1 << j)>(d, s2, Zero(d));
+                    s3 = s3 + CombineShiftRightLanes<HWY_LANES(T)-(1 << j)>(d, s3, Zero(d));
+                });
+
+                s0 = s0 + v0;
+                s1 = s1 + TableLookupLanes(s0, shuf_last);
+                s2 = s2 + TableLookupLanes(s1, shuf_last);
+                s3 = s3 + TableLookupLanes(s2, shuf_last);
+                v0 = TableLookupLanes(s3, shuf_last);
+            }
+
+            Store(s0, d, x + i + L * 0);
+            Store(s1, d, x + i + L * 1);
+            Store(s2, d, x + i + L * 2);
+            Store(s3, d, x + i + L * 3);
+        }
     }
-
-    auto convert24 = [&] (Vec<decltype(dw)> v) -> Vec<decltype(dw)>
+    if constexpr (sizeof(T) == 4)
     {
-        if constexpr (std::is_signed<T>::value || codec == zvec_block_rel)
-        {
-            if constexpr (HWY_LANES(i8) == 64) {
-                Vec<decltype(dw)> u = CombineShiftRightLanes<HWY_LANES(i32)-4>(dw, v, Zero(dw));
-                return BitCast(dw, ShiftRight<8>(BitCast(dws, IfThenElse(shuf_mask,
-                    TableLookupBytes(BitCast(db, v), shuf_dec),
-                    TableLookupBytes(BitCast(db, u), shuf_dec)))));
-            } else if constexpr (HWY_LANES(i8) == 16) {
-                return BitCast(dw, ShiftRight<8>(BitCast(dws,
-                    TableLookupBytes(BitCast(db, v), shuf_dec))));
+        using S = typename std::conditional<std::is_signed<T>::value,i24,u24>::type;
+
+        const ScalableTag<T> d;
+        const ScalableTag<i32> w;
+        const ScalableTag<i8> b;
+        const RebindToSigned<decltype(d)> ds;
+        const Repartition<i8, decltype(d)> db;
+
+        const size_t L = Lanes(d);
+        const size_t V = Lanes(db);
+
+        alignas(64) i8 idx_dec[V];
+        alignas(64) i8 idx_mask[V];
+        Vec<decltype(db)> shuf_dec;
+        Mask<decltype(db)> shuf_mask;
+
+        const auto shuf_last = IndicesFromVec(d, Set(d, L - 1));
+
+        for (size_t i = 0; i < V; i++) {
+            i8 x = (i % 4) + (i / 4) * 3;
+            idx_dec[(i+1)&(V-1)] = (i % 4) < 3 ? x : -1;
+        }
+        shuf_dec = Load(db, idx_dec);
+
+        if constexpr (HWY_LANES(i8) > 16) {
+            for (size_t i = 0; i < V; i++) {
+                i8 x = (i % 4) + (i / 4) * 3;
+                if (std::is_signed<T>::value || codec == zvec_block_rel) {
+                    idx_mask[(i+1)&(V-1)] = (x / 16) == (i / 16) ? -1 : 0;
+                } else {
+                    idx_mask[i] = (x / 16) == (i / 16) ? -1 : 0;
+                }
             }
+            shuf_mask = MaskFromVec(Load(db, idx_mask));
         }
-        else
+
+        auto convert24 = [&] (Vec<decltype(d)> v) -> Vec<decltype(d)>
         {
-            if constexpr (HWY_LANES(i8) == 64) {
-                Vec<decltype(dw)> u = CombineShiftRightLanes<HWY_LANES(i32)-4>(dw, v, Zero(dw));
-                return BitCast(dw, IfThenElse(shuf_mask,
-                    TableLookupBytes(BitCast(db, v), shuf_dec),
-                    TableLookupBytes(BitCast(db, u), shuf_dec)));
-            } else if constexpr (HWY_LANES(i8) == 16) {
-                return BitCast(dw,
-                    TableLookupBytes(BitCast(db, v), shuf_dec));
+            if constexpr (std::is_signed<T>::value || codec == zvec_block_rel)
+            {
+                if constexpr (HWY_LANES(i8) > 16) {
+                    Vec<decltype(d)> u = CombineShiftRightLanes<HWY_LANES(i32)-4>(d, v, Zero(d));
+                    return BitCast(d, ShiftRight<8>(BitCast(ds, IfThenElse(shuf_mask,
+                        TableLookupBytes(BitCast(db, v), shuf_dec),
+                        TableLookupBytes(BitCast(db, u), shuf_dec)))));
+                } else if constexpr (HWY_LANES(i8) == 16) {
+                    return BitCast(d, ShiftRight<8>(BitCast(ds,
+                        TableLookupBytes(BitCast(db, v), shuf_dec))));
+                }
             }
-        }
-    };
+            else
+            {
+                if constexpr (HWY_LANES(i8) > 16) {
+                    Vec<decltype(d)> u = CombineShiftRightLanes<HWY_LANES(i32)-4>(d, v, Zero(d));
+                    return BitCast(d, IfThenElse(shuf_mask,
+                        TableLookupBytes(BitCast(db, v), shuf_dec),
+                        TableLookupBytes(BitCast(db, u), shuf_dec)));
+                } else if constexpr (HWY_LANES(i8) == 16) {
+                    return BitCast(d,
+                        TableLookupBytes(BitCast(db, v), shuf_dec));
+                }
+            }
+        };
 
-    Vec<decltype(d)> v0 = Set(d, iv);
-    Vec<decltype(w)> r0, r1, r2;
-    Vec<decltype(w)> w0, w1, w2, w3;
-    Vec<decltype(d)> d0, d1, d2, d3;
-    Vec<decltype(d)> s0, s1, s2, s3;
-    for (size_t i = 0, j = 0; i < N; i += L * 4, j+= L * 3)
-    {
-        r0 = ZeroExtendVector(w, Load(dw, (x32*)r + j + L * 0));
-        r1 = ZeroExtendVector(w, Load(dw, (x32*)r + j + L * 1));
-        r2 = ZeroExtendVector(w, Load(dw, (x32*)r + j + L * 2));
-
-        if constexpr (HWY_LANES(i8) == 64)
+        Vec<decltype(d)> v0 = Set(d, iv);
+        Vec<decltype(d)> r0, r1, r2;
+        Vec<decltype(d)> w0, w1, w2, w3;
+        Vec<decltype(d)> d0, d1, d2, d3;
+        Vec<decltype(d)> s0, s1, s2, s3;
+        for (size_t i = 0, j = 0; i < N; i += L * 4, j+= L * 3)
         {
-            w0 = r0;
-            w1 = BitCast(w, IfThenElse(FirstN(w, 2),
-                CombineShiftRightLanes<6>(w, Zero(w), BitCast(w, r0)),
-                CombineShiftRightLanes<HWY_LANES(i32)-2>(w, BitCast(w, r1), Zero(w))));
-            w2 = BitCast(w, IfThenElse(FirstN(w, 4),
-                CombineShiftRightLanes<4>(w, Zero(w), BitCast(w, r1)),
-                CombineShiftRightLanes<HWY_LANES(i32)-4>(w, BitCast(w, r2), Zero(w))));
-            w3 = BitCast(w, CombineShiftRightLanes<2>(w, Zero(w), BitCast(w, r2)));
+            r0 = Load(d, (T*)r + j + L * 0);
+            r1 = Load(d, (T*)r + j + L * 1);
+            r2 = Load(d, (T*)r + j + L * 2);
+
+            if constexpr (HWY_LANES(i8) == 64)
+            {
+                w0 = r0;
+                w1 = BitCast(d, IfThenElse(FirstN(w, 4),
+                    CombineShiftRightLanes<12>(w, Zero(w), BitCast(w,r0)),
+                    CombineShiftRightLanes<HWY_LANES(i32)-4>(w, BitCast(w,r1), Zero(w))));
+                w2 = BitCast(d, IfThenElse(FirstN(w, 8),
+                    CombineShiftRightLanes<8>(w, Zero(w), BitCast(w,r1)),
+                    CombineShiftRightLanes<HWY_LANES(i32)-8>(w, BitCast(w,r2), Zero(w))));
+                w3 = BitCast(d, CombineShiftRightLanes<4>(w, Zero(w), BitCast(w,r2)));
+            }
+            else if constexpr (HWY_LANES(i8) == 16)
+            {
+                w0 = r0;
+                w1 = BitCast(d, IfThenElse(FirstN(b, 4),
+                    CombineShiftRightBytes<12>(b, Zero(b), BitCast(b, r0)),
+                    CombineShiftRightBytes<HWY_LANES(i8)-4>(b, BitCast(b, r1), Zero(b))));
+                w2 = BitCast(d, IfThenElse(FirstN(b, 8),
+                    CombineShiftRightBytes<8>(b, Zero(b), BitCast(b, r1)),
+                    CombineShiftRightBytes<HWY_LANES(i8)-8>(b, BitCast(b, r2), Zero(b))));
+                w3 = BitCast(d, CombineShiftRightBytes<4>(b, Zero(b), BitCast(b, r2)));
+            }
+
+            d0 = convert24(w0);
+            d1 = convert24(w1);
+            d2 = convert24(w2);
+            d3 = convert24(w3);
+
+            s0 = d0;
+            s1 = d1;
+            s2 = d2;
+            s3 = d3;
+
+            if (codec == zvec_block_rel)
+            {
+                constexpr_for<0, ilog2(HWY_LANES(T)), 1>([&](auto j){
+                    s0 = s0 + CombineShiftRightLanes<HWY_LANES(T)-(1 << j)>(d, s0, Zero(d));
+                    s1 = s1 + CombineShiftRightLanes<HWY_LANES(T)-(1 << j)>(d, s1, Zero(d));
+                    s2 = s2 + CombineShiftRightLanes<HWY_LANES(T)-(1 << j)>(d, s2, Zero(d));
+                    s3 = s3 + CombineShiftRightLanes<HWY_LANES(T)-(1 << j)>(d, s3, Zero(d));
+                });
+
+                s0 = s0 + v0;
+                s1 = s1 + TableLookupLanes(s0, shuf_last);
+                s2 = s2 + TableLookupLanes(s1, shuf_last);
+                s3 = s3 + TableLookupLanes(s2, shuf_last);
+                v0 = TableLookupLanes(s3, shuf_last);
+            }
+
+            Store(s0, d, x + i + L * 0);
+            Store(s1, d, x + i + L * 1);
+            Store(s2, d, x + i + L * 2);
+            Store(s3, d, x + i + L * 3);
         }
-        else if constexpr (HWY_LANES(i8) == 16)
-        {
-            w0 = r0;
-            w1 = BitCast(w, IfThenElse(FirstN(b, 2),
-                CombineShiftRightBytes<6>(b, Zero(b), BitCast(b, r0)),
-                CombineShiftRightBytes<HWY_LANES(i8)-2>(b, BitCast(b, r1), Zero(b))));
-            w2 = BitCast(w, IfThenElse(FirstN(b, 4),
-                CombineShiftRightBytes<4>(b, Zero(b), BitCast(b, r1)),
-                CombineShiftRightBytes<HWY_LANES(i8)-4>(b, BitCast(b, r2), Zero(b))));
-            w3 = BitCast(w, CombineShiftRightBytes<2>(b, Zero(b), BitCast(b, r2)));
-        }
-
-        d0 = PromoteTo(d, convert24(LowerHalf(dw,w0)));
-        d1 = PromoteTo(d, convert24(LowerHalf(dw,w1)));
-        d2 = PromoteTo(d, convert24(LowerHalf(dw,w2)));
-        d3 = PromoteTo(d, convert24(LowerHalf(dw,w3)));
-
-        s0 = d0;
-        s1 = d1;
-        s2 = d2;
-        s3 = d3;
-
-        if (codec == zvec_block_rel)
-        {
-            constexpr_for<0, ilog2(HWY_LANES(T)), 1>([&](auto j){
-                s0 = s0 + CombineShiftRightLanes<HWY_LANES(T)-(1 << j)>(d, s0, Zero(d));
-                s1 = s1 + CombineShiftRightLanes<HWY_LANES(T)-(1 << j)>(d, s1, Zero(d));
-                s2 = s2 + CombineShiftRightLanes<HWY_LANES(T)-(1 << j)>(d, s2, Zero(d));
-                s3 = s3 + CombineShiftRightLanes<HWY_LANES(T)-(1 << j)>(d, s3, Zero(d));
-            });
-
-            s0 = s0 + v0;
-            s1 = s1 + TableLookupLanes(s0, shuf_last);
-            s2 = s2 + TableLookupLanes(s1, shuf_last);
-            s3 = s3 + TableLookupLanes(s2, shuf_last);
-            v0 = TableLookupLanes(s3, shuf_last);
-        }
-
-        Store(s0, d, x + i + L * 0);
-        Store(s1, d, x + i + L * 1);
-        Store(s2, d, x + i + L * 2);
-        Store(s3, d, x + i + L * 3);
     }
 }
 
@@ -930,7 +1213,7 @@ void ZVEC_ARCH_FN2(zvec_ll_block_encode,x48)(T * __restrict x, typename std::con
 
     auto convert48 = [&] (Vec<decltype(d)> v) -> Vec<decltype(d)>
     {
-        if constexpr (HWY_LANES(i8) == 64) {
+        if constexpr (HWY_LANES(i8) > 16) {
             return BitCast(d, TableLookupLanes(BitCast(s, v), IndicesFromVec(s, shuf_encs)));
         } else if constexpr (HWY_LANES(i8) == 16) {
             return BitCast(d, TableLookupBytes(BitCast(b, v), shuf_encb));
@@ -1046,7 +1329,7 @@ void ZVEC_ARCH_FN2(zvec_ll_block_decode,x48)(T * __restrict x, typename std::con
     {
         if (std::is_signed<T>::value || codec == zvec_block_rel)
         {
-            if constexpr (HWY_LANES(i8) == 64) {
+            if constexpr (HWY_LANES(i8) > 16) {
                 return BitCast(d, ShiftRight<16>(BitCast(ds, TableLookupLanes(BitCast(s, v), IndicesFromVec(s, shuf_decs)))));
             } else if constexpr (HWY_LANES(i8) == 16) {
                 return BitCast(d, ShiftRight<16>(BitCast(ds, TableLookupBytes(BitCast(b, v), shuf_decb))));
@@ -1054,7 +1337,7 @@ void ZVEC_ARCH_FN2(zvec_ll_block_decode,x48)(T * __restrict x, typename std::con
         }
         else
         {
-            if constexpr (HWY_LANES(i8) == 64) {
+            if constexpr (HWY_LANES(i8) > 16) {
                 return BitCast(d, TableLookupLanes(BitCast(s, v), IndicesFromVec(s, shuf_decs)));
             } else if constexpr (HWY_LANES(i8) == 16) {
                 return BitCast(d, TableLookupBytes(BitCast(b, v), shuf_decb));

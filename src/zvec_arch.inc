@@ -77,6 +77,45 @@ void ZVEC_ARCH_FN2(zvec_ll_block_synth_abs,u64)(u64 *x, size_t n, u64 iv);
 void ZVEC_ARCH_FN2(zvec_ll_block_synth_rel,u64)(u64 *x, size_t n, u64 iv, u64 dv);
 void ZVEC_ARCH_FN2(zvec_ll_block_synth_both,u64)(u64 *x, size_t n, u64 iv, u64 dv);
 
+
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_abs,i32,i8)(i32 *x, i8 *r, size_t n);
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_abs,i32,i16)(i32 *x, i16 *r, size_t n);
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_abs,i32,i24)(i32 *x, i24 *r, size_t n);
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_abs,i32,i8)(i32 *x, i8 *r, size_t n);
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_abs,i32,i16)(i32 *x, i16 *r, size_t n);
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_abs,i32,i24)(i32 *x, i24 *r, size_t n);
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_rel,i32,i8)(i32 *x, i8 *r, size_t n, i32 iv);
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_rel,i32,i16)(i32 *x, i16 *r, size_t n, i32 iv);
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_rel,i32,i24)(i32 *x, i24 *r, size_t n, i32 iv);
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_rel,i32,i8)(i32 *x, i8 *r, size_t n, i32 iv);
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_rel,i32,i16)(i32 *x, i16 *r, size_t n, i32 iv);
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_rel,i32,i24)(i32 *x, i24 *r, size_t n, i32 iv);
+zvec_stats<i32> ZVEC_ARCH_FN2(zvec_ll_block_scan_abs,i32)(i32 *x, size_t n);
+zvec_stats<i32> ZVEC_ARCH_FN2(zvec_ll_block_scan_rel,i32)(i32 *x, size_t n);
+zvec_stats<i32> ZVEC_ARCH_FN2(zvec_ll_block_scan_both,i32)(i32 *x, size_t n);
+void ZVEC_ARCH_FN2(zvec_ll_block_synth_abs,i32)(i32 *x, size_t n, i32 iv);
+void ZVEC_ARCH_FN2(zvec_ll_block_synth_rel,i32)(i32 *x, size_t n, i32 iv, i32 dv);
+void ZVEC_ARCH_FN2(zvec_ll_block_synth_both,i32)(i32 *x, size_t n, i32 iv, i32 dv);
+
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_abs,u32,u8)(u32 *x, u8 *r, size_t n);
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_abs,u32,u16)(u32 *x, u16 *r, size_t n);
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_abs,u32,u24)(u32 *x, u24 *r, size_t n);
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_abs,u32,u8)(u32 *x, u8 *r, size_t n);
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_abs,u32,u16)(u32 *x, u16 *r, size_t n);
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_abs,u32,u24)(u32 *x, u24 *r, size_t n);
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_rel,u32,u8)(u32 *x, u8 *r, size_t n, u32 iv);
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_rel,u32,u16)(u32 *x, u16 *r, size_t n, u32 iv);
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_rel,u32,u24)(u32 *x, u24 *r, size_t n, u32 iv);
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_rel,u32,u8)(u32 *x, u8 *r, size_t n, u32 iv);
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_rel,u32,u16)(u32 *x, u16 *r, size_t n, u32 iv);
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_rel,u32,u24)(u32 *x, u24 *r, size_t n, u32 iv);
+zvec_stats<u32> ZVEC_ARCH_FN2(zvec_ll_block_scan_abs,u32)(u32 *x, size_t n);
+zvec_stats<u32> ZVEC_ARCH_FN2(zvec_ll_block_scan_rel,u32)(u32 *x, size_t n);
+zvec_stats<u32> ZVEC_ARCH_FN2(zvec_ll_block_scan_both,u32)(u32 *x, size_t n);
+void ZVEC_ARCH_FN2(zvec_ll_block_synth_abs,u32)(u32 *x, size_t n, u32 iv);
+void ZVEC_ARCH_FN2(zvec_ll_block_synth_rel,u32)(u32 *x, size_t n, u32 iv, u32 dv);
+void ZVEC_ARCH_FN2(zvec_ll_block_synth_both,u32)(u32 *x, size_t n, u32 iv, u32 dv);
+
 #ifdef ZVEC_INSTANTIATE
 void ZVEC_ARCH_FN3(zvec_ll_block_encode_abs,i64,i8)(i64 *x, i8 *r, size_t n) { ZVEC_ARCH_FN1(zvec_ll_block_encode_abs)(x,r,n); }
 void ZVEC_ARCH_FN3(zvec_ll_block_encode_abs,i64,i16)(i64 *x, i16 *r, size_t n) { ZVEC_ARCH_FN1(zvec_ll_block_encode_abs)(x,r,n); }
@@ -131,4 +170,42 @@ zvec_stats<u64> ZVEC_ARCH_FN2(zvec_ll_block_scan_both,u64)(u64 *x, size_t n) { r
 void ZVEC_ARCH_FN2(zvec_ll_block_synth_abs,u64)(u64 *x, size_t n, u64 iv) { ZVEC_ARCH_FN1(zvec_ll_block_synth_abs)(x,n,iv); }
 void ZVEC_ARCH_FN2(zvec_ll_block_synth_rel,u64)(u64 *x, size_t n, u64 iv, u64 dv) { ZVEC_ARCH_FN1(zvec_ll_block_synth_rel)(x,n,iv,dv); }
 void ZVEC_ARCH_FN2(zvec_ll_block_synth_both,u64)(u64 *x, size_t n, u64 iv, u64 dv) { ZVEC_ARCH_FN1(zvec_ll_block_synth_both)(x,n,iv,dv); }
+
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_abs,i32,i8)(i32 *x, i8 *r, size_t n) { ZVEC_ARCH_FN1(zvec_ll_block_encode_abs)(x,r,n); }
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_abs,i32,i16)(i32 *x, i16 *r, size_t n) { ZVEC_ARCH_FN1(zvec_ll_block_encode_abs)(x,r,n); }
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_abs,i32,i24)(i32 *x, i24 *r, size_t n) { ZVEC_ARCH_FN1(zvec_ll_block_encode_abs)(x,r,n); }
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_abs,i32,i8)(i32 *x, i8 *r, size_t n) { ZVEC_ARCH_FN1(zvec_ll_block_decode_abs)(x,r,n); }
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_abs,i32,i16)(i32 *x, i16 *r, size_t n) { ZVEC_ARCH_FN1(zvec_ll_block_decode_abs)(x,r,n); }
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_abs,i32,i24)(i32 *x, i24 *r, size_t n) { ZVEC_ARCH_FN1(zvec_ll_block_decode_abs)(x,r,n); }
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_rel,i32,i8)(i32 *x, i8 *r, size_t n, i32 iv) { ZVEC_ARCH_FN1(zvec_ll_block_encode_rel)(x,r,n,iv); }
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_rel,i32,i16)(i32 *x, i16 *r, size_t n, i32 iv) { ZVEC_ARCH_FN1(zvec_ll_block_encode_rel)(x,r,n,iv); }
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_rel,i32,i24)(i32 *x, i24 *r, size_t n, i32 iv) { ZVEC_ARCH_FN1(zvec_ll_block_encode_rel)(x,r,n,iv); }
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_rel,i32,i8)(i32 *x, i8 *r, size_t n, i32 iv) { ZVEC_ARCH_FN1(zvec_ll_block_decode_rel)(x,r,n,iv); }
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_rel,i32,i16)(i32 *x, i16 *r, size_t n, i32 iv) { ZVEC_ARCH_FN1(zvec_ll_block_decode_rel)(x,r,n,iv); }
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_rel,i32,i24)(i32 *x, i24 *r, size_t n, i32 iv) { ZVEC_ARCH_FN1(zvec_ll_block_decode_rel)(x,r,n,iv); }
+zvec_stats<i32> ZVEC_ARCH_FN2(zvec_ll_block_scan_abs,i32)(i32 *x, size_t n) { return ZVEC_ARCH_FN1(zvec_ll_block_scan_abs)(x,n); }
+zvec_stats<i32> ZVEC_ARCH_FN2(zvec_ll_block_scan_rel,i32)(i32 *x, size_t n) { return ZVEC_ARCH_FN1(zvec_ll_block_scan_rel)(x,n); }
+zvec_stats<i32> ZVEC_ARCH_FN2(zvec_ll_block_scan_both,i32)(i32 *x, size_t n) { return ZVEC_ARCH_FN1(zvec_ll_block_scan_both)(x,n); }
+void ZVEC_ARCH_FN2(zvec_ll_block_synth_abs,i32)(i32 *x, size_t n, i32 iv) { ZVEC_ARCH_FN1(zvec_ll_block_synth_abs)(x,n,iv); }
+void ZVEC_ARCH_FN2(zvec_ll_block_synth_rel,i32)(i32 *x, size_t n, i32 iv, i32 dv) { ZVEC_ARCH_FN1(zvec_ll_block_synth_rel)(x,n,iv,dv); }
+void ZVEC_ARCH_FN2(zvec_ll_block_synth_both,i32)(i32 *x, size_t n, i32 iv, i32 dv) { ZVEC_ARCH_FN1(zvec_ll_block_synth_both)(x,n,iv,dv); }
+
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_abs,u32,u8)(u32 *x, u8 *r, size_t n) { ZVEC_ARCH_FN1(zvec_ll_block_encode_abs)(x,r,n); }
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_abs,u32,u16)(u32 *x, u16 *r, size_t n) { ZVEC_ARCH_FN1(zvec_ll_block_encode_abs)(x,r,n); }
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_abs,u32,u24)(u32 *x, u24 *r, size_t n) { ZVEC_ARCH_FN1(zvec_ll_block_encode_abs)(x,r,n); }
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_abs,u32,u8)(u32 *x, u8 *r, size_t n) { ZVEC_ARCH_FN1(zvec_ll_block_decode_abs)(x,r,n); }
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_abs,u32,u16)(u32 *x, u16 *r, size_t n) { ZVEC_ARCH_FN1(zvec_ll_block_decode_abs)(x,r,n); }
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_abs,u32,u24)(u32 *x, u24 *r, size_t n) { ZVEC_ARCH_FN1(zvec_ll_block_decode_abs)(x,r,n); }
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_rel,u32,u8)(u32 *x, u8 *r, size_t n, u32 iv) { ZVEC_ARCH_FN1(zvec_ll_block_encode_rel)(x,r,n,iv); }
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_rel,u32,u16)(u32 *x, u16 *r, size_t n, u32 iv) { ZVEC_ARCH_FN1(zvec_ll_block_encode_rel)(x,r,n,iv); }
+void ZVEC_ARCH_FN3(zvec_ll_block_encode_rel,u32,u24)(u32 *x, u24 *r, size_t n, u32 iv) { ZVEC_ARCH_FN1(zvec_ll_block_encode_rel)(x,r,n,iv); }
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_rel,u32,u8)(u32 *x, u8 *r, size_t n, u32 iv) { ZVEC_ARCH_FN1(zvec_ll_block_decode_rel)(x,r,n,iv); }
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_rel,u32,u16)(u32 *x, u16 *r, size_t n, u32 iv) { ZVEC_ARCH_FN1(zvec_ll_block_decode_rel)(x,r,n,iv); }
+void ZVEC_ARCH_FN3(zvec_ll_block_decode_rel,u32,u24)(u32 *x, u24 *r, size_t n, u32 iv) { ZVEC_ARCH_FN1(zvec_ll_block_decode_rel)(x,r,n,iv); }
+zvec_stats<u32> ZVEC_ARCH_FN2(zvec_ll_block_scan_abs,u32)(u32 *x, size_t n) { return ZVEC_ARCH_FN1(zvec_ll_block_scan_abs)(x,n); }
+zvec_stats<u32> ZVEC_ARCH_FN2(zvec_ll_block_scan_rel,u32)(u32 *x, size_t n) { return ZVEC_ARCH_FN1(zvec_ll_block_scan_rel)(x,n); }
+zvec_stats<u32> ZVEC_ARCH_FN2(zvec_ll_block_scan_both,u32)(u32 *x, size_t n) { return ZVEC_ARCH_FN1(zvec_ll_block_scan_both)(x,n); }
+void ZVEC_ARCH_FN2(zvec_ll_block_synth_abs,u32)(u32 *x, size_t n, u32 iv) { ZVEC_ARCH_FN1(zvec_ll_block_synth_abs)(x,n,iv); }
+void ZVEC_ARCH_FN2(zvec_ll_block_synth_rel,u32)(u32 *x, size_t n, u32 iv, u32 dv) { ZVEC_ARCH_FN1(zvec_ll_block_synth_rel)(x,n,iv,dv); }
+void ZVEC_ARCH_FN2(zvec_ll_block_synth_both,u32)(u32 *x, size_t n, u32 iv, u32 dv) { ZVEC_ARCH_FN1(zvec_ll_block_synth_both)(x,n,iv,dv); }
 #endif
