@@ -6,7 +6,7 @@
 
 #include <random>
 
-template <typename T = i64, int Q = 512>
+template <typename T, int Q = (4096/sizeof(T))>
 struct block_random
 {
     std::seed_seq seed;
@@ -25,22 +25,7 @@ struct block_random
     T value;
     T delta;
 
-    block_random() :
-        seed{2},
-        engine(seed),
-        dist_state(0,12),
-        dist_i7(-(1ull<<6)+1,(1ull<<6)-1ull),
-        dist_i15(-(1ull<<14)+1,(1ull<<14)-1ull),
-        dist_i23(-(1ull<<22)+1,(1ull<<22)-1ull),
-        dist_i31(-(1ull<<30)+1,(1ull<<30)-1ull),
-        dist_i47(-(1ull<<46)+1,(1ull<<46)-1ull),
-        dist_i63(-(1ull<<62)+1,(1ull<<62)-1ull),
-        counter(0),
-        state(-1),
-        value(dist_i63(engine)),
-        delta(0)
-    {}
-
+    block_random() {}
     block_random(block_random&&) : block_random() {}
 
     int rstate(){ /* random state (0-12) */ return dist_state(engine); }
@@ -56,34 +41,89 @@ struct block_random
     T rel_i31() { /* iv + (-2^30:2^30-1) */ return value + dist_i31(engine); }
     T rel_i47() { /* iv + (-2^46:2^46-1) */ return value + dist_i47(engine); }
     T abs_i63() { /* iv + (-2^62:2^62-1) */ return dist_i63(engine); }
-    T con_i63() { /* iv                  */ return value; }
-    T seq_i63() { /* iv + delta          */ value += delta; return value; }
+    T con_i()   { /* iv                  */ return value; }
+    T seq_i()   { /* iv + delta          */ value += delta; return value; }
 
     T val() {
-        if (++counter == Q || state == -1) {
-            state = rstate();
-            value = dist_i63(engine);
-            delta = dist_i47(engine);
-            counter = 0;
+        if constexpr (sizeof(T) == 8) {
+            if (++counter == Q || state == -1) {
+                state = rstate();
+                value = dist_i63(engine);
+                delta = dist_i47(engine);
+                counter = 0;
+            }
+            switch (state) {
+            case 0: return abs_i7();
+            case 1: return abs_i15();
+            case 2: return abs_i23();
+            case 3: return abs_i31();
+            case 4: return abs_i47();
+            case 5: return rel_i7();
+            case 6: return rel_i15();
+            case 7: return rel_i23();
+            case 8: return rel_i31();
+            case 9: return rel_i47();
+            case 10: return abs_i63();
+            case 11: return con_i();
+            case 12: return seq_i();
+            }
         }
-        switch (state) {
-        case 0: return abs_i7();
-        case 1: return abs_i15();
-        case 2: return abs_i23();
-        case 3: return abs_i31();
-        case 4: return abs_i47();
-        case 5: return rel_i7();
-        case 6: return rel_i15();
-        case 7: return rel_i23();
-        case 8: return rel_i31();
-        case 9: return rel_i47();
-        case 10: return abs_i63();
-        case 11: return con_i63();
-        case 12: return seq_i63();
+        if constexpr (sizeof(T) == 4) {
+            if (++counter == Q || state == -1) {
+                state = rstate();
+                value = dist_i31(engine);
+                delta = dist_i23(engine);
+                counter = 0;
+            }
+            switch (state) {
+            case 0: return abs_i7();
+            case 1: return abs_i15();
+            case 2: return abs_i23();
+            case 3: return rel_i7();
+            case 4: return rel_i15();
+            case 5: return rel_i23();
+            case 6: return abs_i31();
+            case 7: return con_i();
+            case 8: return seq_i();
+            }
         }
         return 0;
     }
 };
+
+template <>
+block_random<i64,512>::block_random() :
+    seed{2},
+    engine(seed),
+    dist_state(0,12),
+    dist_i7(-(1ull<<6)+1,(1ull<<6)-1ull),
+    dist_i15(-(1ull<<14)+1,(1ull<<14)-1ull),
+    dist_i23(-(1ull<<22)+1,(1ull<<22)-1ull),
+    dist_i31(-(1ull<<30)+1,(1ull<<30)-1ull),
+    dist_i47(-(1ull<<46)+1,(1ull<<46)-1ull),
+    dist_i63(-(1ull<<62)+1,(1ull<<62)-1ull),
+    counter(0),
+    state(-1),
+    value(dist_i63(engine)),
+    delta(0)
+{}
+
+template <>
+block_random<i32,1024>::block_random() :
+    seed{2},
+    engine(seed),
+    dist_state(0,8),
+    dist_i7(-(1u<<6)+1,(1u<<6)-1ull),
+    dist_i15(-(1u<<14)+1,(1u<<14)-1ull),
+    dist_i23(-(1u<<22)+1,(1u<<22)-1ull),
+    dist_i31(),
+    dist_i47(),
+    dist_i63(),
+    counter(0),
+    state(-1),
+    value(dist_i31(engine)),
+    delta(0)
+{}
 
 template <typename ZV>
 size_t bitmap_count(ZV& vec)
@@ -114,8 +154,14 @@ void dump_index(ZV& vec)
         const char *codec = zvec_codec_name((zvec_codec)p.format.codec);
         size_t block_size = ((size_t)size * ZV::page_interval) >> 3;
         float ratio = ((float)block_size / (float)page_size) * 100.0f;
-        printf("block[%-5zd] fmt=%-10s:%-3zd size=[%5zu/%-5zu] (%5.1f%%) offset=%-9zd iv=%" PRId64 " dv=%" PRId64 "\n",
-            i, codec, size, block_size, page_size, ratio, p.offset, p.meta.iv, p.meta.dv);
+        if constexpr (sizeof(typename ZV::value_type) == 8) {
+            printf("block[%-5zd] fmt=%-10s:%-3zd size=[%5zu/%-5zu] (%5.1f%%) offset=%-9zd iv=%" PRId64 " dv=%" PRId64 "\n",
+                i, codec, size, block_size, page_size, ratio, p.offset, p.meta.iv, p.meta.dv);
+        }
+        if constexpr (sizeof(typename ZV::value_type) == 4) {
+            printf("block[%-5zd] fmt=%-10s:%-3zd size=[%5zu/%-5zu] (%5.1f%%) offset=%-9zd iv=%" PRId32 " dv=%" PRId32 "\n",
+                i, codec, size, block_size, page_size, ratio, p.offset, p.meta.iv, p.meta.dv);
+        }
         vec_used += block_size;
     }
 

@@ -21,6 +21,7 @@ using timepoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 static std::string cpu_arch;
 static bool help_text = false;
 static int bench_num = -1;
+static int bench_type = 64;
 static size_t bench_size = 128 * 1024 * 1024;
 
 struct bench_result
@@ -159,7 +160,7 @@ static void collect_result(bool last, const bench_result &r)
     }
 }
 
-template <typename T = i64>
+template <typename T>
 struct bench_random
 {
     std::random_device rng_device;
@@ -170,13 +171,7 @@ struct bench_random
     std::uniform_int_distribution<T> rng_dist_i31;
     std::uniform_int_distribution<T> rng_dist_i47;
 
-    bench_random() :
-        rng_engine(rng_device()),
-        rng_dist_i7(-(1ull<<6)+1,(1ull<<6)-1ull),
-        rng_dist_i15(-(1ull<<14)+1,(1ull<<14)-1ull),
-        rng_dist_i23(-(1ull<<22)+1,(1ull<<22)-1ull),
-        rng_dist_i31(-(1ull<<30)+1,(1ull<<30)-1ull),
-        rng_dist_i47(-(1ull<<46)+1,(1ull<<46)-1ull) {}
+    bench_random() : rng_engine(rng_device()) {}
     bench_random(bench_random&&) : bench_random() {}
 
     T abs_i7()  { /*    0 + (-2^6:2^6-1)   */ return rng_dist_i7(rng_engine); }
@@ -190,6 +185,24 @@ struct bench_random
     T rel_i31() { /* 2^56 + (-2^30:2^30-1) */ return (1ll << 56) + rng_dist_i31(rng_engine); }
     T rel_i47() { /* 2^56 + (-2^46:2^46-1) */ return (1ll << 56) + rng_dist_i47(rng_engine); }
 };
+
+template <>
+bench_random<i64>::bench_random() :
+    rng_engine(rng_device()),
+    rng_dist_i7(-(1ull<<6)+1,(1ull<<6)-1ull),
+    rng_dist_i15(-(1ull<<14)+1,(1ull<<14)-1ull),
+    rng_dist_i23(-(1ull<<22)+1,(1ull<<22)-1ull),
+    rng_dist_i31(-(1ull<<30)+1,(1ull<<30)-1ull),
+    rng_dist_i47(-(1ull<<46)+1,(1ull<<46)-1ull) {}
+
+template <>
+bench_random<i32>::bench_random() :
+    rng_engine(rng_device()),
+    rng_dist_i7(-(1u<<6)+1,(1u<<6)-1ull),
+    rng_dist_i15(-(1u<<14)+1,(1u<<14)-1ull),
+    rng_dist_i23(-(1u<<22)+1,(1u<<22)-1ull),
+    rng_dist_i31(),
+    rng_dist_i47() {}
 
 template <typename T, typename R>
 static __attribute__((noinline)) void bench_std_vector_1D(std::string suffix, size_t runs, size_t n, T(R::*func)())
@@ -286,6 +299,27 @@ static void bench_vector(std::string suffix, size_t runs, size_t n, T(R::*func)(
     bench_zip_vector_2D(suffix, runs, n, func);
 }
 
+bool run_bench(int num) { return bench_num == num || bench_num == -1; }
+
+template <typename T>
+static void bench_zip_vector()
+{
+    print_header();
+    if (run_bench(1)) bench_vector<T>("-abs-8", 5, bench_size, &bench_random<T>::abs_i7);
+    if (run_bench(2)) bench_vector<T>("-rel-8", 5, bench_size, &bench_random<T>::rel_i7);
+    if (run_bench(3)) bench_vector<T>("-abs-16", 5, bench_size, &bench_random<T>::abs_i15);
+    if (run_bench(4)) bench_vector<T>("-rel-16", 5, bench_size, &bench_random<T>::rel_i15);
+    if (run_bench(5)) bench_vector<T>("-abs-24", 5, bench_size, &bench_random<T>::abs_i23);
+    if (run_bench(6)) bench_vector<T>("-rel-24", 5, bench_size, &bench_random<T>::rel_i23);
+    if constexpr (sizeof(T) == 8) {
+        if (run_bench(7)) bench_vector<T>("-abs-32", 5, bench_size, &bench_random<T>::abs_i31);
+        if (run_bench(8)) bench_vector<T>("-rel-32", 5, bench_size, &bench_random<T>::rel_i31);
+        if (run_bench(9)) bench_vector<T>("-abs-48", 5, bench_size, &bench_random<T>::abs_i47);
+        if (run_bench(10)) bench_vector<T>("-rel-48", 5, bench_size, &bench_random<T>::rel_i47);
+    }
+    print_footer();
+}
+
 /* benchmark option processing */
 
 void print_help(int argc, char **argv)
@@ -294,9 +328,10 @@ void print_help(int argc, char **argv)
         "Usage: %s [options] [args]\n"
         "  -h, --help                            command line help\n"
         "  -n, --bench-num [num]                 run specific benchmark\n"
+        "  -t, --bench-type (32|64)              benchmark type (default %d)\n"
         "  -s, --bench-size [size(K|M|G)?]       specify benchmark size\n"
         "  -a, --cpu-arch {generic,avx3}         override cpu detection\n",
-        argv[0]);
+        argv[0], bench_type);
 }
 
 bool check_param(bool cond, const char *param)
@@ -337,6 +372,9 @@ void parse_options(int argc, char **argv)
         } else if (match_opt(argv[i], "-n", "--bench-num")) {
             if (check_param(++i == argc, "--bench-num")) break;
             bench_num = atoi(argv[i++]);
+        } else if (match_opt(argv[i], "-t", "--bench-type")) {
+            if (check_param(++i == argc, "--bench-type")) break;
+            bench_type = atoi(argv[i++]);
         } else if (match_opt(argv[i], "-s", "--bench-size")) {
             if (check_param(++i == argc, "--bench-size")) break;
             bench_size = parse_size(argv[i++]);
@@ -359,28 +397,24 @@ void parse_options(int argc, char **argv)
         }
     }
 
+    if (bench_type != 64 && bench_type != 32) {
+        fprintf(stderr, "error: invalid type width: %d\n", bench_type);
+        help_text = true;
+    }
+
     if (help_text) {
         print_help(argc, argv);
         exit(1);
     }
-
 }
-
-bool run_bench(int num) { return bench_num == num || bench_num == -1; }
 
 int main(int argc, char **argv)
 {
     parse_options(argc, argv);
-    print_header();
-    if (run_bench(1)) bench_vector<i64>("-abs-8", 5, bench_size, &bench_random<i64>::abs_i7);
-    if (run_bench(2)) bench_vector<i64>("-rel-8", 5, bench_size, &bench_random<i64>::rel_i7);
-    if (run_bench(3)) bench_vector<i64>("-abs-16", 5, bench_size, &bench_random<i64>::abs_i15);
-    if (run_bench(4)) bench_vector<i64>("-rel-16", 5, bench_size, &bench_random<i64>::rel_i15);
-    if (run_bench(5)) bench_vector<i64>("-abs-24", 5, bench_size, &bench_random<i64>::abs_i23);
-    if (run_bench(6)) bench_vector<i64>("-rel-24", 5, bench_size, &bench_random<i64>::rel_i23);
-    if (run_bench(7)) bench_vector<i64>("-abs-32", 5, bench_size, &bench_random<i64>::abs_i31);
-    if (run_bench(8)) bench_vector<i64>("-rel-32", 5, bench_size, &bench_random<i64>::rel_i31);
-    if (run_bench(9)) bench_vector<i64>("-abs-48", 5, bench_size, &bench_random<i64>::abs_i47);
-    if (run_bench(10)) bench_vector<i64>("-rel-48", 5, bench_size, &bench_random<i64>::rel_i47);
-    print_footer();
+
+    switch (bench_type) {
+        case 32: bench_zip_vector<i32>(); break;
+        case 64: bench_zip_vector<i64>(); break;
+        default: break;
+    }
 }

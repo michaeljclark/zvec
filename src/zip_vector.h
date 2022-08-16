@@ -43,7 +43,7 @@ static inline size_t _pow2_ge(size_t x)
     return 1ull << (_sizebits(size_t) - clz(x-1));
 }
 
-template <typename V = i64, typename I = i64, size_t Q = 512>
+template <typename V = i64, typename I = i64, size_t Q = (4096/sizeof(V))>
 struct zip_vector
 {
     static constexpr I page_size = Q * sizeof(V);
@@ -102,6 +102,11 @@ struct zip_vector
     constexpr I f_page_round(I count) { return (count + Q - 1) & ~(Q - 1); }
     constexpr size_t f_page_num(I count) { return (size_t)(count >> page_shift); }
     constexpr size_t f_page_offset(I count) { return (size_t)(count & (Q - 1)); }
+
+    static constexpr zvec_size zvec_max_size =
+        sizeof(V) == 8 ? zvec_size_64 :
+        sizeof(V) == 4 ? zvec_size_32 :
+                         zvec_size_0;
 
     zip_vector(I count);
     zip_vector();
@@ -389,7 +394,7 @@ inline void zip_vector<V,I,Q>::switch_page(size_t y1)
                 dealloc_slab(prev_size, prev_offset);
             }
         }
-        else if (mod_size == zvec_size_64) {
+        else if (mod_size == zvec_max_size) {
             mod_offset = a;
             a = invalid_offset;
             if (mod_size != prev_size && prev_size != zvec_size_0) {
@@ -424,8 +429,8 @@ inline void zip_vector<V,I,Q>::switch_page(size_t y1)
      * it is still inuse. if it an inplace page changes size then the active
      * area can be reused, hence we check modified size for dirty pages.
      */
-    if (prev_codec == zvec_block_abs && prev_size == zvec_size_64 &&
-        (!_dirty || (_dirty && mod_codec == zvec_block_abs && mod_size == zvec_size_64))) {
+    if (prev_codec == zvec_block_abs && prev_size == zvec_max_size &&
+        (!_dirty || (_dirty && mod_codec == zvec_block_abs && mod_size == zvec_max_size))) {
         a = invalid_offset;
     }
 
@@ -440,16 +445,16 @@ inline void zip_vector<V,I,Q>::switch_page(size_t y1)
     {
         _active_page = y1;
 
-        if (next_size == zvec_size_64) {
+        if (next_size == zvec_max_size) {
             if (a != invalid_offset) {
-                dealloc_slab(zvec_size_64, a);
+                dealloc_slab(zvec_max_size, a);
             }
             a = next_offset;
             Trace("switch_page: inplace y1=%zd a=%zd fmt=%s:%zd",
                 y1, a, zvec_codec_name(next_codec), zvec_size_bits(next_size));
         } else {
             if (a == invalid_offset) {
-                a = alloc_slab(zvec_size_64);
+                a = alloc_slab(zvec_max_size);
             }
             if (next_codec == zvec_codec_none) {
                 Trace("switch_page: zero y1=%zd a=%zd", y1, a)

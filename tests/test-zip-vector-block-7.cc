@@ -16,9 +16,11 @@ void t1()
     block_random<i64> rng;
     zip_vector<i64> vec;
 
+    enum test : size_t { test_size = zip_vector<i64>::page_interval };
+
     /* visual inspection of index for pointer array */
-    vec.resize(512);
-    for (size_t i = 0; i < 512; i++) {
+    vec.resize(test_size);
+    for (size_t i = 0; i < test_size; i++) {
         vec[i] = (intptr_t)(void*)malloc(sizeof(vertex));
     }
     vec.sync();

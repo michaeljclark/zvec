@@ -3,11 +3,12 @@
 #include <zip_vector.h>
 #include "test-zip-vector-common.h"
 
+template<typename T>
 void t1()
 {
-    block_random<i64> rng;
-    std::vector<i64> cvec;
-    zip_vector<i64> zvec;
+    block_random<T> rng;
+    std::vector<T> cvec;
+    zip_vector<T> zvec;
 
     enum test : size_t { test_size = 65536, num_rewrites = 128 };
 
@@ -22,12 +23,12 @@ void t1()
     }
 
     /* check sum against control vector */
-    i64 s1 = 0, s2 = 0;
+    T s1 = 0, s2 = 0;
     for (auto v : cvec) {
-        s1 += (i64)v;
+        s1 += (T)v;
     }
     for (auto v : zvec) {
-        s2 += (i64)v;
+        s2 += (T)v;
     }
     assert(s1 == s2);
 
@@ -39,5 +40,6 @@ void t1()
 int main(int argc, const char **argv)
 {
     parse_options(argc, argv);
-    t1();
+    t1<i64>();
+    t1<i32>();
 }
