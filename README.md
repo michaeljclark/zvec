@@ -395,3 +395,28 @@ _Figure 7: Benchmark ZVec 32-bit Encode Block, Intel Core i9-7980XE, 4.3GHz, AVX
 ![bench-zvec-decode-32](/images/bench-zvec-decode-32.png)
 
 _Figure 8: Benchmark ZVec 32-bit Decode Block, Intel Core i9-7980XE, 4.3GHz, AVX-512_
+
+## License
+
+zip_vector and the zvec block codecs are available under _PLEASE LICENSE_,
+an ISC derived license using authors' implied copyright as detailed under
+The Berne Convention. The primary difference between PLEASE LICENSE and the
+ISC license is that _PLEASE LICENSE_ emphasizes implied copyright which is
+why _PLEASE LICENSE_ is positioned where the text Copyright would normally
+be placed. There is no restriction stating that the copyright notice must be
+retained. From this perspective it may seem close to public domain, however
+it isn't public domain since copyright is not relinquished, rather it is
+explicitly retained in an implied form to defend the free use of the work.
+
+```
+All rights to this work are granted for all purposes, with exception of
+author's implied right of copyright to defend the free use of this work.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+```

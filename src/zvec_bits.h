@@ -1,5 +1,5 @@
 /*
- * PLEASE LICENSE 11/2020, Michael Clark <michaeljclark@mac.com>
+ * PLEASE LICENSE 2022, Michael Clark <michaeljclark@mac.com>
  *
  * All rights to this work are granted for all purposes, with exception of
  * author's implied right of copyright to defend the free use of this work.
