@@ -21,8 +21,9 @@ using timepoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 static std::string cpu_arch;
 static bool help_text = false;
 static int bench_num = -1;
+static int bench_runs = 10;
 static int bench_type = 64;
-static size_t bench_size = 128 * 1024 * 1024;
+static size_t bench_size = 16 * 1024 * 1024;
 
 struct bench_result
 {
@@ -105,7 +106,7 @@ static std::string format_string(const char* fmt, ...)
 
 static void print_header()
 {
-    printf("%-30s %8s %8s %16s %10s\n",
+    printf("|%-30s|%8s|%8s|%16s|%10s|\n",
         "benchmark",
         "size(W)",
         "time(ns)",
@@ -113,12 +114,12 @@ static void print_header()
         "MiB/s"
     );
 
-    printf("%-30s %8s %8s %16s %10s\n",
-        "------------------------------",
-        "--------",
-        "--------",
-        "----------------",
-        "----------"
+    printf("|%-30s|%8s|%8s|%16s|%10s|\n",
+        ":-----------------------------",
+        "-------:",
+        "-------:",
+        "---------------:",
+        "---------:"
     );
 }
 
@@ -135,7 +136,7 @@ static void print_result(const bench_result &r)
     double time_nsec = t / n;
     double word_sec = n * (1e9 / t);
     double mib_sec = n * sizeof(float) * (1e9 / t) / (1024*1024);
-    printf("%-30s %8s %8.3f %16s %10.3f\n",
+    printf("|%-30s| %6s | %6.3f | %14s | %8.1f |\n",
         r.name.c_str(),
         format_string("%sW", format_binary(n)).c_str(),
         time_nsec,
@@ -292,11 +293,14 @@ static __attribute__((noinline)) void bench_zip_vector_2D(std::string suffix, si
 }
 
 template <typename T, typename R>
-static void bench_vector(std::string suffix, size_t runs, size_t n, T(R::*func)())
+static void bench_vector(std::string suffix, size_t test, size_t runs, size_t n, T(R::*func)())
 {
-    bench_std_vector_1D(suffix, runs, n, func);
-    bench_zip_vector_1D(suffix, runs, n, func);
-    bench_zip_vector_2D(suffix, runs, n, func);
+    switch (test) {
+    case 0: bench_std_vector_1D(suffix, runs, n, func); break;
+    case 1: bench_zip_vector_1D(suffix, runs, n, func); break;
+    case 2: bench_zip_vector_2D(suffix, runs, n, func); break;
+    default: break;
+    }
 }
 
 bool run_bench(int num) { return bench_num == num || bench_num == -1; }
@@ -304,20 +308,22 @@ bool run_bench(int num) { return bench_num == num || bench_num == -1; }
 template <typename T>
 static void bench_zip_vector()
 {
-    print_header();
-    if (run_bench(1)) bench_vector<T>("-abs-8", 5, bench_size, &bench_random<T>::abs_i7);
-    if (run_bench(2)) bench_vector<T>("-rel-8", 5, bench_size, &bench_random<T>::rel_i7);
-    if (run_bench(3)) bench_vector<T>("-abs-16", 5, bench_size, &bench_random<T>::abs_i15);
-    if (run_bench(4)) bench_vector<T>("-rel-16", 5, bench_size, &bench_random<T>::rel_i15);
-    if (run_bench(5)) bench_vector<T>("-abs-24", 5, bench_size, &bench_random<T>::abs_i23);
-    if (run_bench(6)) bench_vector<T>("-rel-24", 5, bench_size, &bench_random<T>::rel_i23);
-    if constexpr (sizeof(T) == 8) {
-        if (run_bench(7)) bench_vector<T>("-abs-32", 5, bench_size, &bench_random<T>::abs_i31);
-        if (run_bench(8)) bench_vector<T>("-rel-32", 5, bench_size, &bench_random<T>::rel_i31);
-        if (run_bench(9)) bench_vector<T>("-abs-48", 5, bench_size, &bench_random<T>::abs_i47);
-        if (run_bench(10)) bench_vector<T>("-rel-48", 5, bench_size, &bench_random<T>::rel_i47);
+    for (size_t test_num = 0; test_num < 3; test_num++) {
+        print_header();
+        if (run_bench(1)) bench_vector<T>("-abs-8", test_num, bench_runs, bench_size, &bench_random<T>::abs_i7);
+        if (run_bench(2)) bench_vector<T>("-rel-8", test_num, bench_runs, bench_size, &bench_random<T>::rel_i7);
+        if (run_bench(3)) bench_vector<T>("-abs-16", test_num, bench_runs, bench_size, &bench_random<T>::abs_i15);
+        if (run_bench(4)) bench_vector<T>("-rel-16", test_num, bench_runs, bench_size, &bench_random<T>::rel_i15);
+        if (run_bench(5)) bench_vector<T>("-abs-24", test_num, bench_runs, bench_size, &bench_random<T>::abs_i23);
+        if (run_bench(6)) bench_vector<T>("-rel-24", test_num, bench_runs, bench_size, &bench_random<T>::rel_i23);
+        if constexpr (sizeof(T) == 8) {
+            if (run_bench(7)) bench_vector<T>("-abs-32", test_num, bench_runs, bench_size, &bench_random<T>::abs_i31);
+            if (run_bench(8)) bench_vector<T>("-rel-32", test_num, bench_runs, bench_size, &bench_random<T>::rel_i31);
+            if (run_bench(9)) bench_vector<T>("-abs-48", test_num, bench_runs, bench_size, &bench_random<T>::abs_i47);
+            if (run_bench(10)) bench_vector<T>("-rel-48", test_num, bench_runs, bench_size, &bench_random<T>::rel_i47);
+        }
+        print_footer();
     }
-    print_footer();
 }
 
 /* benchmark option processing */
@@ -372,6 +378,9 @@ void parse_options(int argc, char **argv)
         } else if (match_opt(argv[i], "-n", "--bench-num")) {
             if (check_param(++i == argc, "--bench-num")) break;
             bench_num = atoi(argv[i++]);
+        } else if (match_opt(argv[i], "-r", "--bench-runs")) {
+            if (check_param(++i == argc, "--bench-runs")) break;
+            bench_runs = atoi(argv[i++]);
         } else if (match_opt(argv[i], "-t", "--bench-type")) {
             if (check_param(++i == argc, "--bench-type")) break;
             bench_type = atoi(argv[i++]);

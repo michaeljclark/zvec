@@ -184,7 +184,7 @@ static void print_header(std::string name, size_t runs, size_t lanes, size_t wor
     printf("data size   : %-20s %*s loop count  : %-20zu\n",
         format_string("%sB", format_binary(total_size)).c_str(), w, "", array_size/lanes);
     printf("\n");
-    printf("%-16s %8s %8s %8s %8s %10s %16s %10s\n",
+    printf("|%-18s| %7s| %7s| %7s| %7s| %10s | %14s | %10s |\n",
         "benchmark",
         "runs",
         "size(B)",
@@ -195,15 +195,15 @@ static void print_header(std::string name, size_t runs, size_t lanes, size_t wor
         "MiB/s"
     );
 
-    printf("%-16s %8s %8s %8s %8s %10s %16s %10s\n",
-        "----------------",
-        "--------",
-        "--------",
-        "--------",
-        "--------",
-        "----------",
-        "----------------",
-        "----------"
+    printf("|%-18s|%8s|%8s|%8s|%8s|%12s|%16s|%12s|\n",
+        ":-----------------",
+        "-------:",
+        "-------:",
+        "-------:",
+        "-------:",
+        "-----------:",
+        "---------------:",
+        "-----------:"
     );
 }
 
@@ -227,7 +227,7 @@ static std::map<std::string,double> print_result(std::string name, size_t runs, 
     double time_sec = t / 1e9;
     double word_sec = runs * array_size * (1e9 / t);
     double mib_sec = runs * total_size * (1e9 / t) / (1024*1024);
-    printf("%-16s %8s %8s %8.2f %8.2f %10.6f %16s %10.3f\n",
+    printf("|%-18s| %6s | %6s | %6.2f | %6.2f | %10.6f | %14s | %10.3f |\n",
         name.c_str(),
         format_unit(runs),
         format_string("%sB", format_binary(total_size)).c_str(),
