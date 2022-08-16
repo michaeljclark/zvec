@@ -1,7 +1,7 @@
 # Zip Vector
 
-_zip_vector_ is a compressed variable length array that uses block codecs
-to compress and decompress blocks of integers using variable bit-width
+_zip_vector_ is a compressed variable length array that uses vectorized
+block codecs to compress and decompress integers using variable bit-width
 deltas. The integer block codecs are optimized for vector instruction sets
 using Google's Highway C++ library for portable SIMD/vector intrinsics.
 
@@ -21,6 +21,20 @@ at the cost of performance. The implementation relies for performance
 on the sum of compression latency plus the latency of transferring
 compressed blocks to and from global memory being less than the cost
 of transferring uncompressed blocks to and from global memory.
+
+The implementation supports 64-bit and 32-bit array containers using
+block compression codecs that perform width reduction for absolute
+values, signed deltas for relative values, and special blocks for
+constant values and sequences.
+
+ - `zip_vector<int32_t>`
+   - _{ 8, 16, 24 } bit signed and unsigned fixed-width values._
+   - _{ 8, 16, 24 } bit signed deltas with per block initial value._
+   - _constants and sequences using per block initial value and delta._
+ - `zip_vector<int64_t>`
+   - _{ 8, 16, 24, 32, 48 } bit signed and unsigned fixed-width values._
+   - _{ 8, 16, 24, 32, 48 } bit signed deltas with per block initial value._
+   - _constants and sequences using per block initial value and delta._
 
 The order of compression and decompression of minimally sized blocks
 ensures that accesses to uncompressed data happen in L1 and L2 caches
@@ -75,7 +89,9 @@ or worst case 100% _(plus ~ 1% metadata overhead)_. The codecs can
 compress sign-extended values thus canonical pointers on _x86_64_ will
 use a maximum of 48-bits. Sometimes pages of temporally coherent
 pointers can be compressed with 16-bit or 24-bit deltas or even a
-constant sequence simply using an initial value and delta.
+constant sequence simply using an initial value and delta. On _x86_64_
+the codecs uses _runtime cpuid feature detection_ to select generic
+code or AVX-512 optimized code.
 
 There is one active area in the slab per thread to cache the current
 page uncompressed. When a page boundary is crossed the active area is
@@ -95,6 +111,15 @@ Page dirty status is tracked so that if there are no write accesses to
 a block then scanning and compression can be skipped and it is only
 necessary to perform decompression when crossing block boundaries.
 Please note this initial prototype implementation is not thread safe.
+
+## Build Instructions
+
+It is recommended to build using Ninja:
+
+```
+cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build build -- --verbose
+```
 
 ## Future Work
 
@@ -116,6 +141,21 @@ Please note this initial prototype implementation is not thread safe.
      and to simply keep pages that are being concurrently accessed
      as uncompressed, with the last thread recompressing the page.
      There is some complexity for synchronizing slab resizes.
+
+## Codec Support
+
+This table shows vecotorized block codecs that have so far been implemented.
+
+|          | bits | 48 | 32 | 24 | 16 | 12 |  8 |  6 |  4 |  3 |  2 |  1 |
+|:--------:|:----:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| absoulte | i64  |  X |  X |  X |  X |    |  X |    |    |    |    |    |
+|          | u64  |  X |  X |  X |  X |    |  X |    |    |    |    |    |
+|          | i32  |    |    |  X |  X |    |  X |    |    |    |    |    |
+|          | u32  |    |    |  X |  X |    |  X |    |    |    |    |    |
+| relative | i64  |  X |  X |  X |  X |    |  X |    |    |    |    |    |
+|          | u64  |  X |  X |  X |  X |    |  X |    |    |    |    |    |
+|          | i32  |    |    |  X |  X |    |  X |    |    |    |    |    |
+|          | u32  |    |    |  X |  X |    |  X |    |    |    |    |    |
 
 ## Benchmarks
 
@@ -139,131 +179,219 @@ block stride to take advantage of LLVM/Clang's auto-vectoriztion.
 
 #### Clang 14.0.0, Intel Core i9-7980XE, 4.3GHz, AVX-512
 
-_std::vector_
+_zip_vector<int64_t>_ with 2D iteration
 
 |benchmark                     | size(W)|time(ns)|        word/sec|     MiB/s|
 |:-----------------------------|-------:|-------:|---------------:|---------:|
-|std_vector_1D-abs-8           | 128MiW |  0.529 |  1,891,879,364 | 7216.947 |
-|std_vector_1D-rel-8           | 128MiW |  0.530 |  1,887,875,087 | 7201.672 |
-|std_vector_1D-abs-16          | 128MiW |  0.528 |  1,892,884,744 | 7220.782 |
-|std_vector_1D-rel-16          | 128MiW |  0.529 |  1,889,013,391 | 7206.014 |
-|std_vector_1D-abs-24          | 128MiW |  0.529 |  1,891,753,316 | 7216.466 |
-|std_vector_1D-rel-24          | 128MiW |  0.530 |  1,887,662,411 | 7200.861 |
-|std_vector_1D-abs-32          | 128MiW |  0.530 |  1,887,820,706 | 7201.464 |
-|std_vector_1D-rel-32          | 128MiW |  0.531 |  1,884,319,681 | 7188.109 |
-|std_vector_1D-abs-48          | 128MiW |  0.530 |  1,887,256,970 | 7199.314 |
-|std_vector_1D-rel-48          | 128MiW |  0.529 |  1,889,144,232 | 7206.513 |
+|zip_vector_2D-abs-8           |  16MiW |  0.136 |  7,339,965,481 |  27999.7 |
+|zip_vector_2D-rel-8           |  16MiW |  0.253 |  3,945,984,200 |  15052.7 |
+|zip_vector_2D-abs-16          |  16MiW |  0.211 |  4,743,869,411 |  18096.4 |
+|zip_vector_2D-rel-16          |  16MiW |  0.298 |  3,355,174,115 |  12799.0 |
+|zip_vector_2D-abs-24          |  16MiW |  0.372 |  2,687,863,404 |  10253.4 |
+|zip_vector_2D-rel-24          |  16MiW |  0.479 |  2,089,221,836 |   7969.7 |
+|zip_vector_2D-abs-32          |  16MiW |  0.358 |  2,793,575,309 |  10656.6 |
+|zip_vector_2D-rel-32          |  16MiW |  0.399 |  2,504,306,913 |   9553.2 |
+|zip_vector_2D-abs-48          |  16MiW |  0.482 |  2,076,496,569 |   7921.2 |
+|zip_vector_2D-rel-48          |  16MiW |  0.548 |  1,824,931,526 |   6961.6 |
 
-_zip_vector_ with 1D iteration
-
-|benchmark                     | size(W)|time(ns)|        word/sec|     MiB/s|
-|:-----------------------------|-------:|-------:|---------------:|---------:|
-|zip_vector_1D-abs-8           | 128MiW |  1.125 |    888,653,417 | 3389.944 |
-|zip_vector_1D-rel-8           | 128MiW |  1.237 |    808,660,226 | 3084.794 |
-|zip_vector_1D-abs-16          | 128MiW |  1.193 |    838,248,093 | 3197.663 |
-|zip_vector_1D-rel-16          | 128MiW |  1.279 |    782,044,413 | 2983.263 |
-|zip_vector_1D-abs-24          | 128MiW |  1.359 |    735,859,932 | 2807.083 |
-|zip_vector_1D-rel-24          | 128MiW |  1.466 |    682,128,029 | 2602.112 |
-|zip_vector_1D-abs-32          | 128MiW |  1.285 |    778,149,841 | 2968.406 |
-|zip_vector_1D-rel-32          | 128MiW |  1.386 |    721,330,995 | 2751.659 |
-|zip_vector_1D-abs-48          | 128MiW |  1.474 |    678,340,116 | 2587.662 |
-|zip_vector_1D-rel-48          | 128MiW |  1.566 |    638,719,513 | 2436.522 |
-
-_zip_vector_ with 2D iteration
+_zip_vector<int32_t>_ with 2D iteration
 
 |benchmark                     | size(W)|time(ns)|        word/sec|     MiB/s|
 |:-----------------------------|-------:|-------:|---------------:|---------:|
-|zip_vector_2D-abs-8           | 128MiW |  0.159 |  6,278,942,558 |23952.265 |
-|zip_vector_2D-rel-8           | 128MiW |  0.262 |  3,812,147,744 |14542.190 |
-|zip_vector_2D-abs-16          | 128MiW |  0.232 |  4,305,196,718 |16423.022 |
-|zip_vector_2D-rel-16          | 128MiW |  0.309 |  3,236,402,881 |12345.897 |
-|zip_vector_2D-abs-24          | 128MiW |  0.393 |  2,546,376,549 | 9713.656 |
-|zip_vector_2D-rel-24          | 128MiW |  0.486 |  2,055,610,740 | 7841.533 |
-|zip_vector_2D-abs-32          | 128MiW |  0.370 |  2,700,407,564 |10301.237 |
-|zip_vector_2D-rel-32          | 128MiW |  0.412 |  2,424,960,335 | 9250.490 |
-|zip_vector_2D-abs-48          | 128MiW |  0.495 |  2,019,027,922 | 7701.980 |
-|zip_vector_2D-rel-48          | 128MiW |  0.578 |  1,729,890,781 | 6599.010 |
+|zip_vector_2D-abs-8           |  16MiW |  0.074 | 13,465,854,621 |  51368.2 |
+|zip_vector_2D-rel-8           |  16MiW |  0.075 | 13,334,215,010 |  50866.0 |
+|zip_vector_2D-abs-16          |  16MiW |  0.149 |  6,723,057,823 |  25646.4 |
+|zip_vector_2D-rel-16          |  16MiW |  0.148 |  6,767,145,742 |  25814.6 |
+|zip_vector_2D-abs-24          |  16MiW |  0.286 |  3,492,346,682 |  13322.2 |
+|zip_vector_2D-rel-24          |  16MiW |  0.287 |  3,481,434,937 |  13280.6 |
+
+_zip_vector<int64_t>_ with 1D iteration
+
+|benchmark                     | size(W)|time(ns)|        word/sec|     MiB/s|
+|:-----------------------------|-------:|-------:|---------------:|---------:|
+|zip_vector_1D-abs-8           |  16MiW |  1.113 |    898,209,739 |   3426.4 |
+|zip_vector_1D-rel-8           |  16MiW |  1.220 |    819,679,680 |   3126.8 |
+|zip_vector_1D-abs-16          |  16MiW |  1.171 |    853,726,092 |   3256.7 |
+|zip_vector_1D-rel-16          |  16MiW |  1.256 |    795,872,012 |   3036.0 |
+|zip_vector_1D-abs-24          |  16MiW |  1.339 |    746,892,358 |   2849.2 |
+|zip_vector_1D-rel-24          |  16MiW |  1.454 |    687,776,124 |   2623.7 |
+|zip_vector_1D-abs-32          |  16MiW |  1.279 |    782,121,557 |   2983.6 |
+|zip_vector_1D-rel-32          |  16MiW |  1.367 |    731,442,921 |   2790.2 |
+|zip_vector_1D-abs-48          |  16MiW |  1.458 |    685,831,325 |   2616.2 |
+|zip_vector_1D-rel-48          |  16MiW |  1.533 |    652,166,701 |   2487.8 |
+
+_zip_vector<int32_t>_ with 1D iteration
+
+|benchmark                     | size(W)|time(ns)|        word/sec|     MiB/s|
+|:-----------------------------|-------:|-------:|---------------:|---------:|
+|zip_vector_1D-abs-8           |  16MiW |  1.083 |    923,105,940 |   3521.4 |
+|zip_vector_1D-rel-8           |  16MiW |  1.083 |    923,441,839 |   3522.7 |
+|zip_vector_1D-abs-16          |  16MiW |  1.155 |    865,819,832 |   3302.8 |
+|zip_vector_1D-rel-16          |  16MiW |  1.153 |    867,467,088 |   3309.1 |
+|zip_vector_1D-abs-24          |  16MiW |  1.287 |    777,083,587 |   2964.3 |
+|zip_vector_1D-rel-24          |  16MiW |  1.288 |    776,600,612 |   2962.5 |
+
+_std::vector<int64_t>_
+
+|benchmark                     | size(W)|time(ns)|        word/sec|     MiB/s|
+|:-----------------------------|-------:|-------:|---------------:|---------:|
+|std_vector_1D-abs-8           |  16MiW |  0.491 |  2,037,519,162 |   7772.5 |
+|std_vector_1D-rel-8           |  16MiW |  0.486 |  2,055,820,499 |   7842.3 |
+|std_vector_1D-abs-16          |  16MiW |  0.488 |  2,047,901,254 |   7812.1 |
+|std_vector_1D-rel-16          |  16MiW |  0.486 |  2,057,335,612 |   7848.1 |
+|std_vector_1D-abs-24          |  16MiW |  0.488 |  2,047,893,255 |   7812.1 |
+|std_vector_1D-rel-24          |  16MiW |  0.485 |  2,060,771,399 |   7861.2 |
+|std_vector_1D-abs-32          |  16MiW |  0.491 |  2,036,940,546 |   7770.3 |
+|std_vector_1D-rel-32          |  16MiW |  0.508 |  1,970,149,975 |   7515.5 |
+|std_vector_1D-abs-48          |  16MiW |  0.488 |  2,050,546,412 |   7822.2 |
+|std_vector_1D-rel-48          |  16MiW |  0.489 |  2,045,396,563 |   7802.6 |
+
+_std::vector<int32_t>_
+
+|benchmark                     | size(W)|time(ns)|        word/sec|     MiB/s|
+|:-----------------------------|-------:|-------:|---------------:|---------:|
+|std_vector_1D-abs-8           |  16MiW |  0.227 |  4,399,989,194 |  16784.6 |
+|std_vector_1D-rel-8           |  16MiW |  0.224 |  4,456,231,246 |  16999.2 |
+|std_vector_1D-abs-16          |  16MiW |  0.224 |  4,460,175,033 |  17014.2 |
+|std_vector_1D-rel-16          |  16MiW |  0.233 |  4,293,298,885 |  16377.6 |
+|std_vector_1D-abs-24          |  16MiW |  0.229 |  4,370,102,289 |  16670.6 |
+|std_vector_1D-rel-24          |  16MiW |  0.232 |  4,307,159,106 |  16430.5 |
 
 #### GCC 11.2.0, Intel Core i9-7980XE, 4.3GHz, AVX-512
 
-_std::vector_
+_zip_vector<int64_t>_ with 2D iteration
 
 |benchmark                     | size(W)|time(ns)|        word/sec|     MiB/s|
 |:-----------------------------|-------:|-------:|---------------:|---------:|
-|std_vector_1D-abs-8           | 128MiW |  0.565 |  1,770,115,009 | 6752.453 |
-|std_vector_1D-rel-8           | 128MiW |  0.564 |  1,771,856,644 | 6759.097 |
-|std_vector_1D-abs-16          | 128MiW |  0.564 |  1,772,953,257 | 6763.280 |
-|std_vector_1D-rel-16          | 128MiW |  0.565 |  1,768,512,313 | 6746.339 |
-|std_vector_1D-abs-24          | 128MiW |  0.566 |  1,767,232,942 | 6741.459 |
-|std_vector_1D-rel-24          | 128MiW |  0.566 |  1,765,706,117 | 6735.634 |
-|std_vector_1D-abs-32          | 128MiW |  0.565 |  1,769,965,661 | 6751.883 |
-|std_vector_1D-rel-32          | 128MiW |  0.565 |  1,771,409,990 | 6757.393 |
-|std_vector_1D-abs-48          | 128MiW |  0.567 |  1,764,744,806 | 6731.967 |
-|std_vector_1D-rel-48          | 128MiW |  0.566 |  1,767,714,905 | 6743.297 |
+|zip_vector_2D-abs-8           |  16MiW |  0.388 |  2,577,607,383 |   9832.8 |
+|zip_vector_2D-rel-8           |  16MiW |  0.505 |  1,978,698,920 |   7548.1 |
+|zip_vector_2D-abs-16          |  16MiW |  0.465 |  2,151,404,781 |   8207.0 |
+|zip_vector_2D-rel-16          |  16MiW |  0.529 |  1,891,680,714 |   7216.2 |
+|zip_vector_2D-abs-24          |  16MiW |  0.682 |  1,467,151,472 |   5596.7 |
+|zip_vector_2D-rel-24          |  16MiW |  0.788 |  1,268,457,762 |   4838.8 |
+|zip_vector_2D-abs-32          |  16MiW |  0.610 |  1,638,794,975 |   6251.5 |
+|zip_vector_2D-rel-32          |  16MiW |  0.668 |  1,497,905,530 |   5714.1 |
+|zip_vector_2D-abs-48          |  16MiW |  0.795 |  1,258,082,232 |   4799.2 |
+|zip_vector_2D-rel-48          |  16MiW |  0.882 |  1,133,306,070 |   4323.2 |
 
-_zip_vector_ with 1D iteration
-
-|benchmark                     | size(W)|time(ns)|        word/sec|     MiB/s|
-|:-----------------------------|-------:|-------:|---------------:|---------:|
-|zip_vector_1D-abs-8           | 128MiW |  0.581 |  1,720,850,965 | 6564.525 |
-|zip_vector_1D-rel-8           | 128MiW |  0.690 |  1,448,881,349 | 5527.044 |
-|zip_vector_1D-abs-16          | 128MiW |  0.657 |  1,522,438,729 | 5807.643 |
-|zip_vector_1D-rel-16          | 128MiW |  0.718 |  1,392,686,322 | 5312.677 |
-|zip_vector_1D-abs-24          | 128MiW |  0.873 |  1,145,200,581 | 4368.594 |
-|zip_vector_1D-rel-24          | 128MiW |  0.975 |  1,025,475,302 | 3911.878 |
-|zip_vector_1D-abs-32          | 128MiW |  0.787 |  1,270,031,285 | 4844.785 |
-|zip_vector_1D-rel-32          | 128MiW |  0.841 |  1,189,268,382 | 4536.699 |
-|zip_vector_1D-abs-48          | 128MiW |  1.005 |    995,359,515 | 3796.995 |
-|zip_vector_1D-rel-48          | 128MiW |  1.085 |    921,817,723 | 3516.456 |
-
-_zip_vector_ with 2D iteration
+_zip_vector<int32_t>_ with 2D iteration
 
 |benchmark                     | size(W)|time(ns)|        word/sec|     MiB/s|
 |:-----------------------------|-------:|-------:|---------------:|---------:|
-|zip_vector_2D-abs-8           | 128MiW |  0.402 |  2,489,949,372 | 9498.403 |
-|zip_vector_2D-rel-8           | 128MiW |  0.503 |  1,986,747,862 | 7578.842 |
-|zip_vector_2D-abs-16          | 128MiW |  0.477 |  2,095,220,795 | 7992.633 |
-|zip_vector_2D-rel-16          | 128MiW |  0.533 |  1,875,659,187 | 7155.072 |
-|zip_vector_2D-abs-24          | 128MiW |  0.702 |  1,425,105,130 | 5436.345 |
-|zip_vector_2D-rel-24          | 128MiW |  0.793 |  1,261,083,234 | 4810.651 |
-|zip_vector_2D-abs-32          | 128MiW |  0.600 |  1,667,928,918 | 6362.644 |
-|zip_vector_2D-rel-32          | 128MiW |  0.648 |  1,542,334,051 | 5883.537 |
-|zip_vector_2D-abs-48          | 128MiW |  0.816 |  1,225,588,347 | 4675.249 |
-|zip_vector_2D-rel-48          | 128MiW |  0.894 |  1,118,325,013 | 4266.071 |
+|zip_vector_2D-abs-8           |  16MiW |  0.526 |  1,899,431,185 |   7245.8 |
+|zip_vector_2D-rel-8           |  16MiW |  0.526 |  1,900,954,056 |   7251.6 |
+|zip_vector_2D-abs-16          |  16MiW |  0.596 |  1,677,024,963 |   6397.3 |
+|zip_vector_2D-rel-16          |  16MiW |  0.596 |  1,679,239,464 |   6405.8 |
+|zip_vector_2D-abs-24          |  16MiW |  0.785 |  1,273,253,906 |   4857.1 |
+|zip_vector_2D-rel-24          |  16MiW |  0.783 |  1,276,540,527 |   4869.6 |
+
+_zip_vector<int64_t>_ with 1D iteration
+
+|benchmark                     | size(W)|time(ns)|        word/sec|     MiB/s|
+|:-----------------------------|-------:|-------:|---------------:|---------:|
+|zip_vector_1D-abs-8           |  16MiW |  1.020 |    980,372,353 |   3739.8 |
+|zip_vector_1D-rel-8           |  16MiW |  1.134 |    881,642,641 |   3363.2 |
+|zip_vector_1D-abs-16          |  16MiW |  1.091 |    916,833,601 |   3497.4 |
+|zip_vector_1D-rel-16          |  16MiW |  1.161 |    861,238,444 |   3285.4 |
+|zip_vector_1D-abs-24          |  16MiW |  1.298 |    770,233,637 |   2938.2 |
+|zip_vector_1D-rel-24          |  16MiW |  1.423 |    702,710,323 |   2680.6 |
+|zip_vector_1D-abs-32          |  16MiW |  1.238 |    807,769,314 |   3081.4 |
+|zip_vector_1D-rel-32          |  16MiW |  1.279 |    781,678,405 |   2981.9 |
+|zip_vector_1D-abs-48          |  16MiW |  1.407 |    710,610,011 |   2710.8 |
+|zip_vector_1D-rel-48          |  16MiW |  1.508 |    663,060,725 |   2529.4 |
+
+_zip_vector<int32_t>_ with 1D iteration
+
+|benchmark                     | size(W)|time(ns)|        word/sec|     MiB/s|
+|:-----------------------------|-------:|-------:|---------------:|---------:|
+|zip_vector_1D-abs-8           |  16MiW |  0.762 |  1,312,336,224 |   5006.2 |
+|zip_vector_1D-rel-8           |  16MiW |  0.761 |  1,313,326,131 |   5009.9 |
+|zip_vector_1D-abs-16          |  16MiW |  0.849 |  1,178,253,224 |   4494.7 |
+|zip_vector_1D-rel-16          |  16MiW |  0.849 |  1,178,316,529 |   4494.9 |
+|zip_vector_1D-abs-24          |  16MiW |  1.030 |    970,811,341 |   3703.4 |
+|zip_vector_1D-rel-24          |  16MiW |  1.034 |    967,127,596 |   3689.3 |
+
+_std::vector<int64_t>_
+
+|benchmark                     | size(W)|time(ns)|        word/sec|     MiB/s|
+|:-----------------------------|-------:|-------:|---------------:|---------:|
+|std_vector_1D-abs-8           |  16MiW |  0.565 |  1,769,713,987 |   6750.9 |
+|std_vector_1D-rel-8           |  16MiW |  0.568 |  1,761,752,989 |   6720.6 |
+|std_vector_1D-abs-16          |  16MiW |  0.570 |  1,754,592,031 |   6693.2 |
+|std_vector_1D-rel-16          |  16MiW |  0.569 |  1,758,711,679 |   6709.0 |
+|std_vector_1D-abs-24          |  16MiW |  0.570 |  1,754,429,283 |   6692.6 |
+|std_vector_1D-rel-24          |  16MiW |  0.567 |  1,764,868,512 |   6732.4 |
+|std_vector_1D-abs-32          |  16MiW |  0.570 |  1,754,771,878 |   6693.9 |
+|std_vector_1D-rel-32          |  16MiW |  0.571 |  1,750,488,167 |   6677.6 |
+|std_vector_1D-abs-48          |  16MiW |  0.570 |  1,755,106,344 |   6695.2 |
+|std_vector_1D-rel-48          |  16MiW |  0.569 |  1,756,333,139 |   6699.9 |
+
+_std::vector<int32_t>_
+
+|benchmark                     | size(W)|time(ns)|        word/sec|     MiB/s|
+|:-----------------------------|-------:|-------:|---------------:|---------:|
+|std_vector_1D-abs-8           |  16MiW |  0.373 |  2,679,107,795 |  10220.0 |
+|std_vector_1D-rel-8           |  16MiW |  0.369 |  2,707,621,476 |  10328.8 |
+|std_vector_1D-abs-16          |  16MiW |  0.369 |  2,708,236,438 |  10331.1 |
+|std_vector_1D-rel-16          |  16MiW |  0.370 |  2,699,387,340 |  10297.3 |
+|std_vector_1D-abs-24          |  16MiW |  0.368 |  2,717,198,314 |  10365.3 |
+|std_vector_1D-rel-24          |  16MiW |  0.372 |  2,685,961,839 |  10246.1 |
 
 ### Low Level Codec Benchmarks
 
-Benchmarks for the low level integer block compression codecs.
+Benchmarks of the low level integer block compression codecs using AVX-512
+for 32-bit and 64-bit datatypes.
 
-#### ZVec Scan Block
+#### 64-bit datatype
 
-![bench-zvec-scan](/images/bench-zvec-scan.png)
+##### ZVec Scan Block (64-bit)
 
-_Figure 1: Benchmark ZVec Block Encode, Intel Core i9-7980XE, 4.3GHz, AVX-512_
+![bench-zvec-scan-64](/images/bench-zvec-scan-64.png)
 
-#### ZVec Synthesize Block
+_Figure 1: Benchmark ZVec 64-bit Block Encode, Intel Core i9-7980XE, 4.3GHz, AVX-512_
 
-![bench-zvec-synth](/images/bench-zvec-synth.png)
+##### ZVec Synthesize Block (64-bit)
 
-_Figure 2: Benchmark ZVec Synthesize Block, Intel Core i9-7980XE, 4.3GHz, AVX-512_
+![bench-zvec-synth-64](/images/bench-zvec-synth-64.png)
 
-#### ZVec Encode Block
+_Figure 2: Benchmark ZVec 64-bit Synthesize Block, Intel Core i9-7980XE, 4.3GHz, AVX-512_
 
-![bench-zvec-encode](/images/bench-zvec-encode.png)
+##### ZVec Encode Block (64-bit)
 
-_Figure 3: Benchmark ZVec Encode Block, Intel Core i9-7980XE, 4.3GHz, AVX-512_
+![bench-zvec-encode-64](/images/bench-zvec-encode-64.png)
 
-#### ZVec Decode Block
+_Figure 3: Benchmark ZVec 64-bit Encode Block, Intel Core i9-7980XE, 4.3GHz, AVX-512_
 
-![bench-zvec-decode](/images/bench-zvec-decode.png)
+##### ZVec Decode Block (64-bit)
 
-_Figure 4: Benchmark ZVec Decode Block, Intel Core i9-7980XE, 4.3GHz, AVX-512_
+![bench-zvec-decode-64](/images/bench-zvec-decode-64.png)
 
-## Build Instructions
+_Figure 4: Benchmark ZVec 64-bit Decode Block, Intel Core i9-7980XE, 4.3GHz, AVX-512_
 
-It is recommended to build using Ninja:
+#### 32-bit datatype
 
-```
-cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build build -- --verbose
-```
+Benchmarks of the ZVec AVX-512 codecs with a 32-bit datatype.
+
+##### ZVec Scan Block (64-bit)
+
+![bench-zvec-scan-32](/images/bench-zvec-scan-32.png)
+
+_Figure 5: Benchmark ZVec 32-bit Block Encode, Intel Core i9-7980XE, 4.3GHz, AVX-512_
+
+##### ZVec Synthesize Block (64-bit)
+
+![bench-zvec-synth-32](/images/bench-zvec-synth-32.png)
+
+_Figure 6: Benchmark ZVec 32-bit Synthesize Block, Intel Core i9-7980XE, 4.3GHz, AVX-512_
+
+##### ZVec Encode Block (64-bit)
+
+![bench-zvec-encode-32](/images/bench-zvec-encode-32.png)
+
+_Figure 7: Benchmark ZVec 32-bit Encode Block, Intel Core i9-7980XE, 4.3GHz, AVX-512_
+
+##### ZVec Decode Block (64-bit)
+
+![bench-zvec-decode-32](/images/bench-zvec-decode-32.png)
+
+_Figure 8: Benchmark ZVec 32-bit Decode Block, Intel Core i9-7980XE, 4.3GHz, AVX-512_
