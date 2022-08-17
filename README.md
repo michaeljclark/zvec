@@ -372,25 +372,25 @@ _Figure 4: Benchmark ZVec 64-bit Decode Block, Intel Core i9-7980XE, 4.3GHz, AVX
 
 Benchmarks of the ZVec AVX-512 codecs with a 32-bit datatype.
 
-##### ZVec Scan Block (64-bit)
+##### ZVec Scan Block (32-bit)
 
 ![bench-zvec-scan-32](/images/bench-zvec-scan-32.png)
 
 _Figure 5: Benchmark ZVec 32-bit Block Encode, Intel Core i9-7980XE, 4.3GHz, AVX-512_
 
-##### ZVec Synthesize Block (64-bit)
+##### ZVec Synthesize Block (32-bit)
 
 ![bench-zvec-synth-32](/images/bench-zvec-synth-32.png)
 
 _Figure 6: Benchmark ZVec 32-bit Synthesize Block, Intel Core i9-7980XE, 4.3GHz, AVX-512_
 
-##### ZVec Encode Block (64-bit)
+##### ZVec Encode Block (32-bit)
 
 ![bench-zvec-encode-32](/images/bench-zvec-encode-32.png)
 
 _Figure 7: Benchmark ZVec 32-bit Encode Block, Intel Core i9-7980XE, 4.3GHz, AVX-512_
 
-##### ZVec Decode Block (64-bit)
+##### ZVec Decode Block (32-bit)
 
 ![bench-zvec-decode-32](/images/bench-zvec-decode-32.png)
 
