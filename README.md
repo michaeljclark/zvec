@@ -7,7 +7,7 @@ using Google's Highway C++ library for portable SIMD/vector intrinsics.
 
 > _zip_vector_ reduces memory footprint and can speed up in-order
 > traversal of arrays by lowering global memory bandwidth using
-> lightening fast vector compression.
+> lightning fast vector compression.
 
 ![zip-vector-delta-diagram](/images/zip-vector-delta.svg)
 
